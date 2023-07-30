@@ -1,34 +1,35 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/ndfsa/backend-test/middleware"
 )
 
-var users map[string]string
+var users map[string]uint64
 
 func main() {
-	users = make(map[string]string)
+	users = make(map[string]uint64)
 
-	rootUserId := md5.Sum([]byte("root|toor"))
-	users["root"] = hex.EncodeToString(rootUserId[:])
+	users["root"] = 0
 
-	http.HandleFunc("/auth", auth)
+	http.Handle("/auth", middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000))(http.HandlerFunc(auth)))
+
 	err := http.ListenAndServe(":4001", nil)
 	log.Fatal(err)
 }
 
-func generateJWT(userId string) string {
+func generateJWT(userId uint64) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user": userId,
-		"exp": time.Now().Add(10 * time.Second).Unix(),
-		"nbf": time.Now().Unix(),
+		"exp":  time.Now().Add(10 * time.Second).Unix(),
+		"nbf":  time.Now().Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte("test-application"))
@@ -45,12 +46,6 @@ type UserDTO struct {
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Only POST is supported", http.StatusBadRequest)
-		log.Printf("authentication: received request with %s method\n", r.Method)
-		return
-	}
-
 	var user UserDTO
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -65,21 +60,16 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// pull user from storage
 	userId, ok := users[user.Username]
-	if !ok {
+	if !ok ||
+        // mock password validation
+		user.Username != user.Password {
+
 		log.Printf("authentication: no such username/password=%s/****\n",
 			user.Username)
-		http.Error(w, "No such user", http.StatusForbidden)
-		return
-	}
-
-	hash := md5.Sum([]byte(user.Username + "|" + user.Password))
-
-	calculatedId := hex.EncodeToString(hash[:])
-	if calculatedId != userId {
-		log.Printf("authentication: user authenitcation failed for user=%s\n",
-			user.Username)
-		http.Error(w, "No such user", http.StatusForbidden)
+		w.Header().Set("WWW-Authenticate", "Bearer")
+		http.Error(w, "No such user", http.StatusUnauthorized)
 		return
 	}
 
