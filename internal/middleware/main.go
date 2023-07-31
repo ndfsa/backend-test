@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/ndfsa/backend-test/auth/token"
+	"github.com/ndfsa/backend-test/internal/token"
 )
 
 type middleware = func(http.Handler) http.Handler

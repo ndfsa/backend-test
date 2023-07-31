@@ -9,6 +9,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+type CustomClaims struct {
+	User uint64 `json:"user"`
+	jwt.RegisteredClaims
+}
+
 func Validate(w http.ResponseWriter, r *http.Request) error {
 
 	tokenString := strings.TrimSpace(r.Header.Get("Authorization"))
@@ -43,4 +48,13 @@ func Validate(w http.ResponseWriter, r *http.Request) error {
 
 func tokenValidator(token *jwt.Token) (interface{}, error) {
 	return []byte("test-application"), nil
+}
+
+func GetUserId(tokenString string) (uint64, error) {
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, CustomClaims{})
+	if claims, ok := token.Claims.(CustomClaims); ok {
+		return claims.User, nil
+	}
+
+	return 0, err
 }

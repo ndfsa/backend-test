@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/ndfsa/backend-test/middleware"
+	"github.com/ndfsa/backend-test/internal/middleware"
+	"github.com/ndfsa/backend-test/internal/token"
 )
 
 var users map[string]uint64
@@ -26,11 +27,20 @@ func main() {
 }
 
 func generateJWT(userId uint64) string {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user": userId,
-		"exp":  time.Now().Add(10 * time.Second).Unix(),
-		"nbf":  time.Now().Unix(),
-	})
+	claims := token.CustomClaims{
+		User: userId,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "test",
+			Subject:   "somebody",
+			ID:        "1",
+			Audience:  []string{"somebody_else"},
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenString, err := token.SignedString([]byte("test-application"))
 	if err != nil {
@@ -63,7 +73,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	// pull user from storage
 	userId, ok := users[user.Username]
 	if !ok ||
-        // mock password validation
+		// mock password validation
 		user.Username != user.Password {
 
 		log.Printf("authentication: no such username/password=%s/****\n",

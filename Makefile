@@ -1,26 +1,28 @@
 GOCMD=go
 GOBUILD=$(GOCMD) build
 GOFLAGS=-gcflags '-N -l'
-RM=/bin/rm
 
-BACKGOFILES = $(shell find ./testAPI/ -name "*.go")
+BACKDIR=./cmd/back/
+BACKGOFILES = $(shell find $(BACKDIR) -name "*.go")
 BACKBIN = .build/backSrv
 
-AUTHGOFILES = $(shell find ./auth/ -name "*.go")
+AUTHDIR=./cmd/auth/
+AUTHGOFILES = $(shell find $(AUTHDIR) -name "*.go")
 AUTHBIN = .build/authSrv
 
 all: $(AUTHBIN) $(BACKBIN)
 
 $(AUTHBIN): $(AUTHGOFILES)
-	$(GOBUILD) $(GOFLAGS) -o $@ ./auth/srv/
+	$(GOBUILD) $(GOFLAGS) -o $@ $(AUTHDIR)
 
 $(BACKBIN): $(BACKGOFILES)
-	$(GOBUILD) $(GOFLAGS) -o $@ ./testAPI/srv/
+	$(GOBUILD) $(GOFLAGS) -o $@ $(BACKDIR)
 
 run: all
 	mprocs ./$(AUTHBIN) ./$(BACKBIN) 'pgrep .*Srv --list-name'
 
 clean:
-	$(RM) -rf ./build
+	rm ./.build/*
+	rmdir ./.build
 
 .PHONY: all clean run
