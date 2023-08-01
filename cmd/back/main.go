@@ -2,19 +2,19 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/ndfsa/backend-test/cmd/back/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
 	"github.com/ndfsa/backend-test/internal/token"
 )
 
 func main() {
-	db, err := sql.Open("pgx", "")
+	db, err := sql.Open("pgx", "postgres://back:root@localhost:5432/back_test")
 	if err != nil {
 		log.Fatalf("unable to connect to database: %v\n", err)
 	}
@@ -29,50 +29,46 @@ func main() {
 	log.Fatal(err)
 }
 
-type UserDto struct {
-	Name     string `json:"name"`
-	Username string `json:"user"`
-	Password string `json:"pass"`
-}
-
 func userHandler(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			userId, err := token.GetUserId(strings.Split(r.Header.Get("Authorization"), " ")[1])
+			tokenString := strings.Split(r.Header.Get("Authorization"), " ")[1]
+
+			userId, err := token.GetUserId(tokenString)
 			if err != nil {
+				log.Println(err.Error())
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			fmt.Fprint(w, userId)
-		case "POST":
-			decoder := json.NewDecoder(r.Body)
-			var newUser UserDto
-
-			err := decoder.Decode(&newUser)
-
-			if err != nil ||
-				newUser.Name == "" ||
-				newUser.Password == "" ||
-				newUser.Username == "" {
-
-				http.Error(w, "Malformed request", http.StatusBadRequest)
+			user, err := repository.ReadUser(db, userId)
+            if err != nil {
+				log.Println(err.Error())
+				http.Error(w, "Could not read user", http.StatusInternalServerError)
 				return
-			}
-			var res uint64
-			row := db.QueryRow("select create_user($1, $2, $3)",
-				newUser.Name,
-				newUser.Username,
-				newUser.Password)
-            err = row.Err()
+            }
+
+			fmt.Fprint(w, user)
+		case "POST":
+			userId, err := repository.CreateUser(db, r.Body)
 			if err != nil {
 				log.Println(err.Error())
-				http.Error(w, err.Error(), http.StatusBadRequest)
-                return
+				http.Error(w, "Could not create user", http.StatusInternalServerError)
+				return
 			}
-			row.Scan(&res)
-			fmt.Fprint(w, res)
+
+			fmt.Fprint(w, userId)
+		case "PUT":
+            // TODO
+			err := repository.UpdateUser()
+			if err != nil {
+				log.Println(err.Error())
+				http.Error(w, "Could not update user", http.StatusInternalServerError)
+				return
+			}
+		case "DELETE":
+            // TODO
 		}
 	})
 }
