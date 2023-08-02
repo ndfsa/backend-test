@@ -15,11 +15,15 @@ type CustomClaims struct {
 
 func GetUserId(bearerToken string) (uint64, error) {
 	tokenString := strings.Split(bearerToken, " ")[1]
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, CustomClaims{})
-	if claims, ok := token.Claims.(CustomClaims); ok {
-		return claims.User, nil
-	}
-	return 0, err
+	token, _, err := jwt.NewParser().ParseUnverified(tokenString, &CustomClaims{})
+    if err != nil {
+        return 0, err
+    }
+	claims, ok := token.Claims.(*CustomClaims)
+    if !ok {
+        return 0, errors.New("failed casting claims")
+    }
+	return claims.User, nil
 }
 
 func Validate(header string) error {

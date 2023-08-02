@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -56,7 +57,7 @@ func getUserHandler(db *sql.DB) http.Handler {
 			http.Error(w, "Could not read user", http.StatusInternalServerError)
 			return
 		}
-		fmt.Fprint(w, user)
+		json.NewEncoder(w).Encode(user)
 	})
 }
 

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 
@@ -52,10 +51,9 @@ func CreateUser(db *sql.DB, body io.ReadCloser) (uint64, error) {
 func ReadUser(db *sql.DB, userId uint64) (models.User, error) {
 	var user models.User
 
-	row, err := db.Query(
-		"SELECT id, fullname, username FROM users WHERE id = ?;", userId)
-	if err != nil {
-        return user, errors.New(fmt.Sprintf("userid: %d", userId))
+	row := db.QueryRow("SELECT id, fullname, username FROM users WHERE id = $1", userId)
+	if err := row.Err(); err != nil {
+		return user, err
 	}
 
 	if err := row.Scan(&user.UserId, &user.Fullname, &user.Username); err != nil {
