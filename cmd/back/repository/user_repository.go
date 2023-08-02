@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 
@@ -11,21 +12,26 @@ import (
 	"github.com/ndfsa/backend-test/internal/models"
 )
 
-func CreateUser(db *sql.DB, body io.ReadCloser) (uint64, error) {
-	var newUser dto.UserDto
+func decodeJson(body io.ReadCloser) (dto.UserDto, error) {
+	var userDto dto.UserDto
 
 	decoder := json.NewDecoder(body)
 
-	if err := decoder.Decode(&newUser); err != nil ||
-		newUser.Name == "" ||
-		newUser.Password == "" ||
-		newUser.Username == "" {
-
-		return 0, errors.New("invalid parameters")
+	if err := decoder.Decode(&userDto); err != nil {
+		return userDto, errors.New("invalid parameters")
 	}
 
-	row := db.QueryRow("select selectUser($1, $2, $3)",
-		newUser.Name,
+	return userDto, nil
+}
+
+func CreateUser(db *sql.DB, body io.ReadCloser) (uint64, error) {
+	newUser, err := decodeJson(body)
+	if err != nil {
+		return 0, err
+	}
+
+	row := db.QueryRow("SELECT CREATE_USER($1, $2, $3)",
+		newUser.Fullname,
 		newUser.Username,
 		newUser.Password)
 
@@ -47,9 +53,9 @@ func ReadUser(db *sql.DB, userId uint64) (models.User, error) {
 	var user models.User
 
 	row, err := db.Query(
-		"SELECT userId, userFullName, userName FROM album WHERE userId = ?", userId)
+		"SELECT id, fullname, username FROM users WHERE id = ?;", userId)
 	if err != nil {
-		return user, err
+        return user, errors.New(fmt.Sprintf("userid: %d", userId))
 	}
 
 	if err := row.Scan(&user.UserId, &user.Fullname, &user.Username); err != nil {
@@ -59,9 +65,12 @@ func ReadUser(db *sql.DB, userId uint64) (models.User, error) {
 	return user, nil
 }
 
-func UpdateUser() error {
-	return errors.New("")
+func UpdateUser(db *sql.DB, body io.ReadCloser) error {
+	// user, err := decodeJson(body)
+
+	return nil
 }
 
-func DeleteUser() {
+func DeleteUser() error {
+	return errors.New("")
 }

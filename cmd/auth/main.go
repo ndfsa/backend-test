@@ -11,13 +11,7 @@ import (
 	"github.com/ndfsa/backend-test/internal/token"
 )
 
-var users map[string]uint64
-
 func main() {
-	users = make(map[string]uint64)
-
-	users["root"] = 0
-
 	http.Handle("/auth", middleware.Chain(
 		middleware.Logger,
 		middleware.UploadLimit(1000))(http.HandlerFunc(auth)))
@@ -70,23 +64,12 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// pull user from storage
-	userId, ok := users[user.Username]
-	if !ok ||
-		// mock password validation
-		user.Username != user.Password {
-
-		log.Printf("authentication: no such username/password=%s/****\n",
-			user.Username)
-		w.Header().Set("WWW-Authenticate", "Bearer")
-		http.Error(w, "No such user", http.StatusUnauthorized)
-		return
-	}
+    // TODO authenticate user
 
 	w.Header().Set("Content-Type", "application/json")
 
 	resp := make(map[string]string)
-	resp["token"] = generateJWT(userId)
+	resp["token"] = generateJWT(0)
 
 	json.NewEncoder(w).Encode(resp)
 	log.Printf("authentication: user authenitcation successful for user=%s\n", user.Username)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ndfsa/backend-test/cmd/back/repository"
@@ -22,53 +21,74 @@ func main() {
 
 	http.Handle("/user", middleware.Chain(
 		middleware.Logger,
-		middleware.Methods("POST", "GET"),
-		middleware.Auth)(userHandler(db)))
+		middleware.Method(http.MethodGet),
+		middleware.Auth)(getUserHandler(db)))
+
+	http.Handle("/user/create", middleware.Chain(
+		middleware.Logger,
+		middleware.Method(http.MethodPost))(createUserHandler(db)))
+
+	http.Handle("/user/update", middleware.Chain(
+		middleware.Logger,
+		middleware.Method(http.MethodPut),
+		middleware.Auth)(updateUserHandler(db)))
+
+	http.Handle("/user/delete", middleware.Chain(
+		middleware.Logger,
+		middleware.Method(http.MethodDelete),
+		middleware.Auth)(deleteUserHandler(db)))
 
 	err = http.ListenAndServe(":4000", nil)
 	log.Fatal(err)
 }
 
-func userHandler(db *sql.DB) http.Handler {
+func getUserHandler(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
-			tokenString := strings.Split(r.Header.Get("Authorization"), " ")[1]
+		userId, err := token.GetUserId(r.Header.Get("Authorization"))
+		if err != nil {
+			log.Println(err.Error())
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		user, err := repository.ReadUser(db, userId)
+		if err != nil {
+			log.Println(err.Error())
+			http.Error(w, "Could not read user", http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprint(w, user)
+	})
+}
 
-			userId, err := token.GetUserId(tokenString)
-			if err != nil {
-				log.Println(err.Error())
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
+func createUserHandler(db *sql.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userId, err := repository.CreateUser(db, r.Body)
+		if err != nil {
+			log.Println(err.Error())
+			http.Error(w, "Error creating user", http.StatusInternalServerError)
+			return
+		}
 
-			user, err := repository.ReadUser(db, userId)
-            if err != nil {
-				log.Println(err.Error())
-				http.Error(w, "Could not read user", http.StatusInternalServerError)
-				return
-            }
+		fmt.Fprint(w, userId)
+	})
+}
 
-			fmt.Fprint(w, user)
-		case "POST":
-			userId, err := repository.CreateUser(db, r.Body)
-			if err != nil {
-				log.Println(err.Error())
-				http.Error(w, "Could not create user", http.StatusInternalServerError)
-				return
-			}
+func updateUserHandler(db *sql.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := repository.UpdateUser(db, r.Body); err != nil {
+			log.Println(err.Error())
+			http.Error(w, "Error updating user", http.StatusInternalServerError)
+			return
+		}
+	})
+}
 
-			fmt.Fprint(w, userId)
-		case "PUT":
-            // TODO
-			err := repository.UpdateUser()
-			if err != nil {
-				log.Println(err.Error())
-				http.Error(w, "Could not update user", http.StatusInternalServerError)
-				return
-			}
-		case "DELETE":
-            // TODO
+func deleteUserHandler(db *sql.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := repository.DeleteUser(); err != nil {
+			log.Println(err.Error())
+			http.Error(w, "Error deleting user", http.StatusInternalServerError)
+			return
 		}
 	})
 }
