@@ -2,26 +2,26 @@ GOCMD=go
 GOBUILD=$(GOCMD) build
 GOFLAGS=-gcflags=all="-N -l"
 
-LIBDIR=./internal
+LIBDIR := ./internal
 
-BACKDIR=./cmd/back/
-BACKGOFILES = $(shell find $(BACKDIR) $(LIBDIR) -name "*.go")
-BACKBIN = .build/backSrv
+APIDIR := ./cmd/api/
+APIGOFILES := $(shell find $(APIDIR) $(LIBDIR) -name "*.go")
+APIBIN := .build/apiSrv
 
-AUTHDIR=./cmd/auth/
-AUTHGOFILES = $(shell find $(AUTHDIR) $(LIBDIR) -name "*.go")
-AUTHBIN = .build/authSrv
+AUTHDIR := ./cmd/auth/
+AUTHGOFILES := $(shell find $(AUTHDIR) $(LIBDIR) -name "*.go")
+AUTHBIN := .build/authSrv
 
-all: $(AUTHBIN) $(BACKBIN)
+all: $(AUTHBIN) $(APIBIN)
 
 $(AUTHBIN): $(AUTHGOFILES)
 	$(GOBUILD) $(GOFLAGS) -o $@ $(AUTHDIR)
 
-$(BACKBIN): $(BACKGOFILES)
-	$(GOBUILD) $(GOFLAGS) -o $@ $(BACKDIR)
+$(APIBIN): $(APIGOFILES)
+	$(GOBUILD) $(GOFLAGS) -o $@ $(APIDIR)
 
 run: all
-	mprocs ./$(AUTHBIN) ./$(BACKBIN)
+	mprocs ./$(AUTHBIN) ./$(APIBIN)
 
 clean:
 	rm ./.build/*

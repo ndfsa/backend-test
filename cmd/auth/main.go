@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/ndfsa/backend-test/cmd/auth/dto"
 	"github.com/ndfsa/backend-test/cmd/auth/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
 	"github.com/ndfsa/backend-test/internal/token"
@@ -53,14 +54,9 @@ func generateJWT(userId uint64) string {
 	return tokenString
 }
 
-type UserDTO struct {
-	Username string `json:"user"`
-	Password string `json:"pass"`
-}
-
 func auth(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var user UserDTO
+		var user dto.AuthUserDTO
 		err := json.NewDecoder(r.Body).Decode(&user)
 		if err != nil {
 			log.Printf("authentication: error %s\n", err.Error())

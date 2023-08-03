@@ -7,7 +7,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/ndfsa/backend-test/cmd/back/dto"
+	"github.com/ndfsa/backend-test/cmd/api/dto"
 	"github.com/ndfsa/backend-test/internal/models"
 )
 

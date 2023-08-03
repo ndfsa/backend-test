@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/ndfsa/backend-test/cmd/back/repository"
+	"github.com/ndfsa/backend-test/cmd/api/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
 	"github.com/ndfsa/backend-test/internal/token"
 )
