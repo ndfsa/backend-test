@@ -11,27 +11,30 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ndfsa/backend-test/cmd/auth/dto"
 	"github.com/ndfsa/backend-test/cmd/auth/repository"
-	"github.com/ndfsa/backend-test/internal/middleware"
-	"github.com/ndfsa/backend-test/internal/token"
+	ilib "github.com/ndfsa/backend-test/internal"
 )
 
 func main() {
+	// connect to database
 	db, err := sql.Open("pgx", "postgres://back:root@localhost:5432/back_test")
 	if err != nil {
 		log.Fatalf("unable to connect to database: %v\n", err)
 	}
 	defer db.Close()
 
-	http.Handle("/auth", middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000))(auth(db)))
+	// setup routes
+	http.Handle("/auth", ilib.Chain(
+		ilib.Logger,
+		ilib.UploadLimit(1000))(auth(db)))
 
-	err = http.ListenAndServe(":4001", nil)
-	log.Fatal(err)
+	// start server
+	if err := http.ListenAndServe(":4001", nil); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func generateJWT(userId uint64) string {
-	claims := token.CustomClaims{
+	claims := ilib.CustomClaims{
 		User: userId,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
@@ -65,16 +68,15 @@ func auth(db *sql.DB) http.Handler {
 		}
 
 		if user.Username == "" || user.Password == "" {
-			log.Println("authentication: error missing parameters")
 			http.Error(w, "missing parameters", http.StatusBadRequest)
 			return
 		}
 
 		userId, err := repository.AuthenticateUser(db, user.Username, user.Password)
 		if err != nil {
-            log.Println(err.Error())
+			log.Println(err.Error())
 			http.Error(w, "could not authenticate", http.StatusUnauthorized)
-            return
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")

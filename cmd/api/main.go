@@ -9,54 +9,56 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ndfsa/backend-test/cmd/api/repository"
-	"github.com/ndfsa/backend-test/internal/middleware"
-	"github.com/ndfsa/backend-test/internal/token"
+	ilib "github.com/ndfsa/backend-test/internal"
 )
 
 func main() {
+	// create database connection
 	db, err := sql.Open("pgx", "postgres://back:root@localhost:5432/back_test")
 	if err != nil {
 		log.Fatalf("unable to connect to database: %v\n", err)
 	}
 	defer db.Close()
 
-	http.Handle("/user", middleware.Chain(
-		middleware.Logger,
-		middleware.Method(http.MethodGet),
-		middleware.Auth)(getUserHandler(db)))
+	// create routes
+	http.Handle("/user", ilib.Chain(
+		ilib.Logger,
+		ilib.Method(http.MethodGet),
+		ilib.Auth)(getUserHandler(db)))
 
-	http.Handle("/user/create", middleware.Chain(
-		middleware.Logger,
-		middleware.Method(http.MethodPost))(createUserHandler(db)))
+	http.Handle("/user/create", ilib.Chain(
+		ilib.Logger,
+		ilib.Method(http.MethodPost))(createUserHandler(db)))
 
-	http.Handle("/user/update", middleware.Chain(
-		middleware.Logger,
-		middleware.Method(http.MethodPut),
-		middleware.Auth)(updateUserHandler(db)))
+	http.Handle("/user/update", ilib.Chain(
+		ilib.Logger,
+		ilib.Method(http.MethodPut),
+		ilib.Auth)(updateUserHandler(db)))
 
-	http.Handle("/user/delete", middleware.Chain(
-		middleware.Logger,
-		middleware.Method(http.MethodDelete),
-		middleware.Auth)(deleteUserHandler(db)))
+	http.Handle("/user/delete", ilib.Chain(
+		ilib.Logger,
+		ilib.Method(http.MethodDelete),
+		ilib.Auth)(deleteUserHandler(db)))
 
-	err = http.ListenAndServe(":4000", nil)
-	log.Fatal(err)
+	if err = http.ListenAndServe(":4000", nil); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getUserHandler(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userId, err := token.GetUserId(r.Header.Get("Authorization"))
-		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+        // open jwt to retrieve userId
+		userId, _ := ilib.GetUserId(r.Header.Get("Authorization"))
+
+        // get user from database
 		user, err := repository.ReadUser(db, userId)
 		if err != nil {
 			log.Println(err.Error())
 			http.Error(w, "Could not read user", http.StatusInternalServerError)
 			return
 		}
+
+        // write user to response
 		json.NewEncoder(w).Encode(user)
 	})
 }
@@ -76,7 +78,10 @@ func createUserHandler(db *sql.DB) http.Handler {
 
 func updateUserHandler(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := repository.UpdateUser(db, r.Body); err != nil {
+        // open jwt to retrieve userId
+		userId, _ := ilib.GetUserId(r.Header.Get("Authorization"))
+
+		if err := repository.UpdateUser(db, r.Body, userId); err != nil {
 			log.Println(err.Error())
 			http.Error(w, "Error updating user", http.StatusInternalServerError)
 			return
@@ -86,7 +91,11 @@ func updateUserHandler(db *sql.DB) http.Handler {
 
 func deleteUserHandler(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := repository.DeleteUser(); err != nil {
+        // open jwt to retrieve userId
+		userId, _ := ilib.GetUserId(r.Header.Get("Authorization"))
+
+        // delete user from database
+		if err := repository.DeleteUser(db, userId); err != nil {
 			log.Println(err.Error())
 			http.Error(w, "Error deleting user", http.StatusInternalServerError)
 			return

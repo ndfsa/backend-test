@@ -1,20 +1,24 @@
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
     id BIGSERIAL,
-    fullname VARCHAR(300),
-    username VARCHAR(100),
-    password VARCHAR(60),
-    PRIMARY KEY (id),
-    UNIQUE (username)
+    fullname VARCHAR(300) NOT NULL,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(60) NOT NULL,
+    PRIMARY KEY (id)
 );
 
+
+-- create root user with default password
 INSERT INTO users (fullname, username, password) VALUES (
     'root user',
     'root',
     '$2a$06$DZxsYD5zF5NI/ugKmMmZw.7/hehCmlCpzDOuPutYFmwIlyT37SDGy'
 );
 
-CREATE OR REPLACE FUNCTION CREATE_USER(
+
+-- function to create a user, checks for null and encrypts the password
+DROP FUNCTION IF EXISTS CREATE_USER;
+CREATE FUNCTION CREATE_USER(
     _fullname VARCHAR(300),
     _username VARCHAR(100),
     _password VARCHAR(72)
@@ -46,7 +50,28 @@ END
 $$
 LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION AUTHENTICATE_USER(
+
+-- function to update user, only username and fullname can be updated
+DROP PROCEDURE IF EXISTS UPDATE_USER;
+CREATE PROCEDURE UPDATE_USER(
+    _id BIGINT,
+    _fullname VARCHAR(300),
+    _username VARCHAR(100)
+) AS
+$$
+BEGIN
+    UPDATE users SET
+        fullname = COALESCE(NULLIF(_fullname, ''), fullname),
+        username = COALESCE(NULLIF(_username, ''), username)
+    WHERE id = _id;
+END
+$$
+LANGUAGE 'plpgsql';
+
+
+-- authentication function, returns user ID for tokens
+DROP FUNCTION IF EXISTS AUTHENTICATE_USER;
+CREATE FUNCTION AUTHENTICATE_USER(
     _username VARCHAR,
     _password VARCHAR
 ) RETURNS BIGINT AS
@@ -63,7 +88,7 @@ BEGIN
         RAISE EXCEPTION 'password cannot be NULL or empty.';
     END IF;
 
-    SELECT (password = crypt(_password, password)) AS pswdmatch, id
+    SELECT (password = crypt(_password, password)) , id
     INTO _auth, _id
     FROM users
     WHERE username = _username;
@@ -72,7 +97,7 @@ BEGIN
         RETURN _id;
     END IF;
 
-    RETURN 0;
+    RAISE EXCEPTION 'user authentication unsuccessful.';
 END
 $$
 LANGUAGE 'plpgsql';

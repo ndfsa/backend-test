@@ -1,6 +1,8 @@
 package repository
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 func AuthenticateUser(db *sql.DB, username string, password string) (uint64, error) {
 	row := db.QueryRow("SELECT AUTHENTICATE_USER($1, $2)", username, password)

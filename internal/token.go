@@ -1,4 +1,4 @@
-package token
+package internal
 
 import (
 	"errors"
@@ -27,18 +27,21 @@ func GetUserId(bearerToken string) (uint64, error) {
 }
 
 func Validate(header string) error {
+    // cleanup empty header
 	tokenString := strings.TrimSpace(header)
 	if tokenString == "" {
 		return errors.New("bearer token not found")
 	}
 
+    // separate bearer token, which comes in the form: "Bearer <token>"
 	bearerToken := strings.Split(tokenString, " ")
 	if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
 		return errors.New("invalid bearer token")
 	}
 
 	tokenString = bearerToken[1]
-	token, err := jwt.Parse(tokenString,
+	token, err := jwt.ParseWithClaims(tokenString,
+        &CustomClaims{},
 		tokenValidator,
 		jwt.WithLeeway(1*time.Second),
 		jwt.WithValidMethods([]string{"RS256", "HS256"}))
@@ -48,6 +51,14 @@ func Validate(header string) error {
 	if !token.Valid {
 		return errors.New("invalid jwt token")
 	}
+
+    claims, ok := token.Claims.(*CustomClaims)
+    if !ok {
+        return errors.New("invalid jwt claims")
+    }
+    if claims.User == 0 {
+        return errors.New("invalid user")
+    }
 
 	return nil
 }

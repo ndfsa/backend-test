@@ -8,7 +8,7 @@ import (
 	"log"
 
 	"github.com/ndfsa/backend-test/cmd/api/dto"
-	"github.com/ndfsa/backend-test/internal/models"
+	ilib "github.com/ndfsa/backend-test/internal"
 )
 
 func decodeJson(body io.ReadCloser) (dto.UserDto, error) {
@@ -48,8 +48,8 @@ func CreateUser(db *sql.DB, body io.ReadCloser) (uint64, error) {
 	return res, nil
 }
 
-func ReadUser(db *sql.DB, userId uint64) (models.User, error) {
-	var user models.User
+func ReadUser(db *sql.DB, userId uint64) (ilib.User, error) {
+	var user ilib.User
 
 	row := db.QueryRow("SELECT id, fullname, username FROM users WHERE id = $1", userId)
 	if err := row.Err(); err != nil {
@@ -63,12 +63,29 @@ func ReadUser(db *sql.DB, userId uint64) (models.User, error) {
 	return user, nil
 }
 
-func UpdateUser(db *sql.DB, body io.ReadCloser) error {
-	// user, err := decodeJson(body)
+func UpdateUser(db *sql.DB, body io.ReadCloser, userId uint64) error {
+	user, err := decodeJson(body)
+	if err != nil {
+		return err
+	}
+
+    row := db.QueryRow("CALL UPDATE_USER($1, $2, $3)", userId, user.Fullname, user.Username)
+    if err := row.Err(); err != nil {
+        return err
+    }
 
 	return nil
 }
 
-func DeleteUser() error {
-	return errors.New("")
+func DeleteUser(db *sql.DB, userId uint64) error {
+    if userId == 1 {
+        return errors.New("cannot delete root user")
+    }
+
+    row := db.QueryRow("DELETE FROM users WHERE id = $1", userId)
+    if err := row.Err(); err != nil {
+        return err
+    }
+
+	return nil
 }

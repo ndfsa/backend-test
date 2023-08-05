@@ -1,19 +1,17 @@
-package middleware
+package internal
 
 import (
 	"log"
 	"net/http"
-
-	"github.com/ndfsa/backend-test/internal/token"
 )
 
-type middleware = func(http.Handler) http.Handler
+type Middleware = func(http.Handler) http.Handler
 
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
-			err := token.Validate(header)
+			err := Validate(header)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				log.Printf("middleware - Auth: %s\n", err.Error())
@@ -23,8 +21,8 @@ func Auth(next http.Handler) http.Handler {
 		})
 }
 
-func UploadLimit(limit int64) middleware {
-	return middleware(
+func UploadLimit(limit int64) Middleware {
+	return Middleware(
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.ContentLength > int64(limit) {
@@ -45,8 +43,8 @@ func Logger(next http.Handler) http.Handler {
 		})
 }
 
-func Method(method string) middleware {
-	return middleware(
+func Method(method string) Middleware {
+	return Middleware(
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if method != r.Method {
@@ -61,8 +59,8 @@ func Method(method string) middleware {
 		})
 }
 
-func Chain(middlewares ...middleware) middleware {
-	return middleware(
+func Chain(middlewares ...Middleware) Middleware {
+	return Middleware(
 		func(endpoint http.Handler) http.Handler {
 			if len(middlewares) == 0 {
 				return endpoint
