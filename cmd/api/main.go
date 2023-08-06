@@ -10,6 +10,7 @@ import (
 	"github.com/ndfsa/backend-test/cmd/api/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
 	"github.com/ndfsa/backend-test/internal/token"
+	"github.com/ndfsa/backend-test/internal/util"
 )
 
 func main() {
@@ -49,8 +50,7 @@ func getUserHandler(db *sql.DB) http.Handler {
 		// get user from database
 		user, err := repository.ReadUser(db, userId)
 		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, "Could not read user", http.StatusInternalServerError)
+            util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -65,8 +65,7 @@ func updateUserHandler(db *sql.DB) http.Handler {
 		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
 
 		if err := repository.UpdateUser(db, r.Body, userId); err != nil {
-			log.Println(err.Error())
-			http.Error(w, "Error updating user", http.StatusInternalServerError)
+            util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	})
@@ -79,8 +78,7 @@ func deleteUserHandler(db *sql.DB) http.Handler {
 
 		// delete user from database
 		if err := repository.DeleteUser(db, userId); err != nil {
-			log.Println(err.Error())
-			http.Error(w, "Error deleting user", http.StatusInternalServerError)
+            util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	})

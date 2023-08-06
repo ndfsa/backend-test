@@ -14,6 +14,7 @@ import (
 	"github.com/ndfsa/backend-test/cmd/auth/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
 	"github.com/ndfsa/backend-test/internal/token"
+	"github.com/ndfsa/backend-test/internal/util"
 )
 
 func main() {
@@ -38,7 +39,7 @@ func main() {
 	}
 }
 
-func generateJWT(userId uint64) string {
+func generateJWT(userId uint64) (string, error) {
 	claims := token.CustomClaims{
 		User: userId,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -56,42 +57,41 @@ func generateJWT(userId uint64) string {
 
 	tokenString, err := token.SignedString([]byte("test-application"))
 	if err != nil {
-		log.Printf("error generating jwt: %s\n", err.Error())
+        return "", err
 	}
 
-	return tokenString
+	return tokenString, nil
 }
 
 func auth(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var user dto.AuthUserDTO
-		err := json.NewDecoder(r.Body).Decode(&user)
-		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, "malformed json", http.StatusBadRequest)
+		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+            util.Error(&w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		if user.Username == "" || user.Password == "" {
-			log.Println("user or password missing")
-			http.Error(w, "missing parameters", http.StatusBadRequest)
+            util.Error(&w, http.StatusBadRequest, "missing credentials")
 			return
 		}
 
 		userId, err := repository.AuthenticateUser(db, user.Username, user.Password)
 		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, "could not authenticate", http.StatusUnauthorized)
+            util.Error(&w, http.StatusUnauthorized, err.Error())
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 
 		resp := make(map[string]string)
-		resp["token"] = generateJWT(userId)
+		resp["token"], err = generateJWT(userId)
+        if err != nil {
+            util.Error(&w, http.StatusUnauthorized, err.Error())
+            return
+        }
 
 		json.NewEncoder(w).Encode(resp)
-		log.Printf("authentication: user authenitcation successful for user=%s\n", user.Username)
 	})
 }
 
@@ -99,8 +99,7 @@ func signUpHandler(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userId, err := repository.SignUp(db, r.Body)
 		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, "Error creating user", http.StatusInternalServerError)
+            util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 

@@ -2,9 +2,7 @@ package repository
 
 import (
 	"database/sql"
-	"errors"
 	"io"
-	"log"
 
 	"github.com/ndfsa/backend-test/cmd/auth/dto"
 	"github.com/ndfsa/backend-test/internal/util"
@@ -25,9 +23,8 @@ func AuthenticateUser(db *sql.DB, username string, password string) (uint64, err
 }
 
 func SignUp(db *sql.DB, body io.ReadCloser) (uint64, error) {
-    var newUser dto.SignUpDTO
-	err := util.DecodeJson(body, &newUser)
-	if err != nil {
+	var newUser dto.SignUpDTO
+	if err := util.DecodeJson(body, &newUser); err != nil {
 		return 0, err
 	}
 
@@ -37,14 +34,12 @@ func SignUp(db *sql.DB, body io.ReadCloser) (uint64, error) {
 		newUser.Password)
 
 	if err := row.Err(); err != nil {
-		log.Println(err.Error())
-		return 0, errors.New("could not create user")
+		return 0, err
 	}
 
 	var res uint64
 	if err := row.Scan(&res); err != nil {
-		log.Println(err.Error())
-		return 0, errors.New("could not create user")
+		return 0, err
 	}
 
 	return res, nil

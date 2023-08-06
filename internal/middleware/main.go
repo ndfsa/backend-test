@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/ndfsa/backend-test/internal/token"
+	"github.com/ndfsa/backend-test/internal/util"
 )
 
 type Middleware = func(http.Handler) http.Handler
@@ -15,8 +16,7 @@ func Auth(next http.Handler) http.Handler {
 			header := r.Header.Get("Authorization")
 			err := token.Validate(header)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
-				log.Printf("middleware - Auth: %s\n", err.Error())
+                util.Error(&w, http.StatusUnauthorized, err.Error())
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -28,8 +28,7 @@ func UploadLimit(limit int64) Middleware {
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.ContentLength > int64(limit) {
-					http.Error(w, "Request body is too long", http.StatusRequestEntityTooLarge)
-					log.Printf("middleware - UploadLimit: body is too long\n")
+                    util.Error(&w, http.StatusRequestEntityTooLarge, "request too large")
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -50,10 +49,7 @@ func Method(method string) Middleware {
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if method != r.Method {
-					http.Error(w, "method unsupported", http.StatusMethodNotAllowed)
-
-					log.Printf("middleware - Method: %s not in supported\n",
-						r.Method)
+					util.Error(&w, http.StatusMethodNotAllowed, "method not supported")
 					return
 				}
 				next.ServeHTTP(w, r)
