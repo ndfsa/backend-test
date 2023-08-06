@@ -1,4 +1,4 @@
-package internal
+package model
 
 type User struct {
     UserId   uint64 `json:"id"`

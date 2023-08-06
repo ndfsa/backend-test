@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -11,7 +12,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ndfsa/backend-test/cmd/auth/dto"
 	"github.com/ndfsa/backend-test/cmd/auth/repository"
-	ilib "github.com/ndfsa/backend-test/internal"
+	"github.com/ndfsa/backend-test/internal/middleware"
+	"github.com/ndfsa/backend-test/internal/token"
 )
 
 func main() {
@@ -23,9 +25,12 @@ func main() {
 	defer db.Close()
 
 	// setup routes
-	http.Handle("/auth", ilib.Chain(
-		ilib.Logger,
-		ilib.UploadLimit(1000))(auth(db)))
+	http.Handle("/auth/signup", middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000))(signUpHandler(db)))
+	http.Handle("/auth", middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000))(auth(db)))
 
 	// start server
 	if err := http.ListenAndServe(":4001", nil); err != nil {
@@ -34,7 +39,7 @@ func main() {
 }
 
 func generateJWT(userId uint64) string {
-	claims := ilib.CustomClaims{
+	claims := token.CustomClaims{
 		User: userId,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
@@ -62,12 +67,13 @@ func auth(db *sql.DB) http.Handler {
 		var user dto.AuthUserDTO
 		err := json.NewDecoder(r.Body).Decode(&user)
 		if err != nil {
-			log.Printf("authentication: error %s\n", err.Error())
+			log.Println(err.Error())
 			http.Error(w, "malformed json", http.StatusBadRequest)
 			return
 		}
 
 		if user.Username == "" || user.Password == "" {
+			log.Println("user or password missing")
 			http.Error(w, "missing parameters", http.StatusBadRequest)
 			return
 		}
@@ -86,5 +92,18 @@ func auth(db *sql.DB) http.Handler {
 
 		json.NewEncoder(w).Encode(resp)
 		log.Printf("authentication: user authenitcation successful for user=%s\n", user.Username)
+	})
+}
+
+func signUpHandler(db *sql.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userId, err := repository.SignUp(db, r.Body)
+		if err != nil {
+			log.Println(err.Error())
+			http.Error(w, "Error creating user", http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Fprint(w, userId)
 	})
 }

@@ -1,8 +1,10 @@
-package internal
+package middleware
 
 import (
 	"log"
 	"net/http"
+
+	"github.com/ndfsa/backend-test/internal/token"
 )
 
 type Middleware = func(http.Handler) http.Handler
@@ -11,7 +13,7 @@ func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
-			err := Validate(header)
+			err := token.Validate(header)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				log.Printf("middleware - Auth: %s\n", err.Error())
