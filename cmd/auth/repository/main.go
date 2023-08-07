@@ -24,7 +24,7 @@ func AuthenticateUser(db *sql.DB, username string, password string) (uint64, err
 
 func SignUp(db *sql.DB, body io.ReadCloser) (uint64, error) {
 	var newUser dto.SignUpDTO
-	if err := util.DecodeJson(body, &newUser); err != nil {
+	if err := util.Receive(body, &newUser); err != nil {
 		return 0, err
 	}
 

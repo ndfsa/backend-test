@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -57,7 +56,7 @@ func generateJWT(userId uint64) (string, error) {
 
 	tokenString, err := token.SignedString([]byte("test-application"))
 	if err != nil {
-        return "", err
+		return "", err
 	}
 
 	return tokenString, nil
@@ -66,32 +65,29 @@ func generateJWT(userId uint64) (string, error) {
 func auth(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var user dto.AuthUserDTO
-		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-            util.Error(&w, http.StatusBadRequest, err.Error())
+		if err := util.Receive(r.Body, &user); err != nil {
+			util.Error(&w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		if user.Username == "" || user.Password == "" {
-            util.Error(&w, http.StatusBadRequest, "missing credentials")
+			util.Error(&w, http.StatusBadRequest, "missing credentials")
 			return
 		}
 
 		userId, err := repository.AuthenticateUser(db, user.Username, user.Password)
 		if err != nil {
-            util.Error(&w, http.StatusUnauthorized, err.Error())
+			util.Error(&w, http.StatusUnauthorized, err.Error())
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		tokenString, err := generateJWT(userId)
+		if err != nil {
+			util.Error(&w, http.StatusUnauthorized, err.Error())
+			return
+		}
 
-		resp := make(map[string]string)
-		resp["token"], err = generateJWT(userId)
-        if err != nil {
-            util.Error(&w, http.StatusUnauthorized, err.Error())
-            return
-        }
-
-		json.NewEncoder(w).Encode(resp)
+		util.Send(&w, dto.TokenDTO{Token: tokenString})
 	})
 }
 
@@ -99,7 +95,7 @@ func signUpHandler(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userId, err := repository.SignUp(db, r.Body)
 		if err != nil {
-            util.Error(&w, http.StatusInternalServerError, err.Error())
+			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 

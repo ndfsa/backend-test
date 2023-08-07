@@ -8,7 +8,11 @@ import (
 	"net/http"
 )
 
-func DecodeJson[T any](body io.ReadCloser, cl *T) error {
+func Send(w *http.ResponseWriter, data any) {
+    json.NewEncoder(*w).Encode(data)
+}
+
+func Receive[T any](body io.ReadCloser, cl *T) error {
 	decoder := json.NewDecoder(body)
 
 	if err := decoder.Decode(cl); err != nil {

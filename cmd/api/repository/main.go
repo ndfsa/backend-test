@@ -27,7 +27,7 @@ func ReadUser(db *sql.DB, userId uint64) (model.User, error) {
 
 func UpdateUser(db *sql.DB, body io.ReadCloser, userId uint64) error {
 	var user dto.UserDto
-	err := util.DecodeJson(body, &user)
+	err := util.Receive(body, &user)
 	if err != nil {
 		return err
 	}
