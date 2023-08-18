@@ -1,9 +1,32 @@
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS user_service CASCADE;
+CREATE TABLE user_service (
+    id BIGSERIAL,
+    user_id BIGSERIAL,
+    service_id BIGSERIAL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (id) REFERENCES users ON DELETE CASCADE,
+    FOREIGN KEY (id) REFERENCES services ON DELETE CASCADE
+);
+
+
+DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
     id BIGSERIAL,
     fullname VARCHAR(300) NOT NULL,
     username VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(60) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+
+DROP TABLE IF EXISTS services CASCADE;
+CREATE TABLE services (
+    id BIGSERIAL,
+    type SMALLINT,
+    state SMALLINT,
+    init_balance NUMERIC(20, 2),
+    debit_balance NUMERIC(20, 2),
+    credit_balance NUMERIC(20, 2),
     PRIMARY KEY (id)
 );
 
