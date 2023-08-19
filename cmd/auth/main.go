@@ -16,6 +16,8 @@ import (
 	"github.com/ndfsa/backend-test/internal/util"
 )
 
+const baseUrl = "/api/v1"
+
 func main() {
 	// connect to database
 	db, err := sql.Open("pgx", "postgres://back:root@localhost:5432/back_test")
@@ -25,12 +27,12 @@ func main() {
 	defer db.Close()
 
 	// setup routes
-	http.Handle("/auth/signup", middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000))(signUpHandler(db)))
-	http.Handle("/auth", middleware.Chain(
+	http.Handle(baseUrl+"/auth", middleware.Chain(
 		middleware.Logger,
 		middleware.UploadLimit(1000))(auth(db)))
+	http.Handle(baseUrl+"/auth/signup", middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000))(signUpHandler(db)))
 
 	// start server
 	if err := http.ListenAndServe(":4001", nil); err != nil {

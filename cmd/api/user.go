@@ -10,18 +10,18 @@ import (
 	"github.com/ndfsa/backend-test/internal/util"
 )
 
-func CreateUserRoutes(db *sql.DB) {
-	http.Handle("/api/user", middleware.Chain(
+func CreateUserRoutes(db *sql.DB, baseUrl string) {
+	http.Handle(baseUrl+"/user", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodGet),
 		middleware.Auth)(getUserHandler(db)))
 
-	http.Handle("/api/user/update", middleware.Chain(
+	http.Handle(baseUrl+"/user/update", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodPut),
 		middleware.Auth)(updateUserHandler(db)))
 
-	http.Handle("/api/user/delete", middleware.Chain(
+	http.Handle(baseUrl+"/user/delete", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodDelete),
 		middleware.Auth)(deleteUserHandler(db)))
