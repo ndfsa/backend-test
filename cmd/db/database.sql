@@ -20,13 +20,15 @@ CREATE TABLE users (
 
 
 DROP TABLE IF EXISTS services CASCADE;
+DROP TYPE CURR;
+CREATE TYPE CURR AS ENUM ('USD', 'CAD', 'JPY', 'NOK');
 CREATE TABLE services (
     id BIGSERIAL,
     type SMALLINT,
     state SMALLINT,
+    currency CURR,
     init_balance NUMERIC(20, 2),
-    debit_balance NUMERIC(20, 2),
-    credit_balance NUMERIC(20, 2),
+    balance NUMERIC(20, 2),
     PRIMARY KEY (id)
 );
 
@@ -132,7 +134,7 @@ CREATE FUNCTION GET_USER_SERVICES(
 ) RETURNS SETOF services AS
 $$
 BEGIN
-    RETURN QUERY SELECT s.id, s.type, s.state, s.init_balance, s.debit_balance, s.credit_balance
+    RETURN QUERY SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
     FROM users u
     JOIN user_service us ON u.id = us.user_id
     JOIN services s ON s.id = us.service_id

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/ndfsa/backend-test/internal/model"
+	"github.com/shopspring/decimal"
 )
 
 func GetServices(db *sql.DB, userId uint64) ([]model.Service, error) {
@@ -15,21 +16,21 @@ func GetServices(db *sql.DB, userId uint64) ([]model.Service, error) {
 
 	var services []model.Service
 	for rows.Next() {
-		var srv model.Service
+		var service model.Service
 		if err := rows.Scan(
-			&srv.Id,
-			&srv.Type,
-			&srv.State,
-			&srv.InitBalance,
-			&srv.DebitBalance,
-			&srv.CreditBalance); err != nil {
+			&service.Id,
+			&service.Type,
+			&service.State,
+			&service.Currency,
+			&service.InitBalance,
+			&service.Balance); err != nil {
 			return services, err
 		}
 
-		services = append(services, srv)
+		services = append(services, service)
 	}
 
-    if err := rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return services, err
 	}
 
@@ -44,15 +45,27 @@ func GetService(db *sql.DB, userId uint64, serviceId uint64) (model.Service, err
 		&service.Id,
 		&service.Type,
 		&service.State,
+		&service.Currency,
 		&service.InitBalance,
-		&service.DebitBalance,
-		&service.CreditBalance); err != nil {
+		&service.Balance); err != nil {
 		return service, err
 	}
 
-    if err := rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return service, err
 	}
 
 	return service, nil
+}
+
+func DebitService(db *sql.DB, userId uint64, serviceId uint64, amount decimal.Decimal) error {
+	return nil
+}
+
+func CreditService(db *sql.DB, userId uint64, serviceId uint64, amount decimal.Decimal) error {
+	return nil
+}
+
+func CreateService() {
+
 }

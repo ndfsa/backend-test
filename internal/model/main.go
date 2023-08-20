@@ -9,10 +9,10 @@ type User struct {
 }
 
 type Service struct {
-	Id            uint64          `json:"id"`
-	Type          uint8           `json:"type"`
-	State         uint8           `json:"state"`
-	InitBalance   decimal.Decimal `json:"init_balance"`
-	DebitBalance  decimal.Decimal `json:"debit_balance"`
-	CreditBalance decimal.Decimal `json:"credit_balance"`
+	Id          uint64          `json:"id"`
+	Type        uint8           `json:"type"`
+	State       uint8           `json:"state"`
+	Currency    string          `json:"currency"`
+	InitBalance decimal.Decimal `json:"init_balance"`
+	Balance     decimal.Decimal `json:"balance"`
 }
