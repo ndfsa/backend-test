@@ -38,9 +38,14 @@ func GetServices(db *sql.DB, userId uint64) ([]model.Service, error) {
 }
 
 func GetService(db *sql.DB, userId uint64, serviceId uint64) (model.Service, error) {
-	rows := db.QueryRow(`SELECT * FROM GET_USER_SERVICES($1) WHERE id = $2`, userId, serviceId)
+	rows := db.QueryRow("SELECT * FROM GET_USER_SERVICES($1) WHERE id = $2", userId, serviceId)
 
 	var service model.Service
+
+	if err := rows.Err(); err != nil {
+		return service, err
+	}
+
 	if err := rows.Scan(
 		&service.Id,
 		&service.Type,
@@ -48,10 +53,6 @@ func GetService(db *sql.DB, userId uint64, serviceId uint64) (model.Service, err
 		&service.Currency,
 		&service.InitBalance,
 		&service.Balance); err != nil {
-		return service, err
-	}
-
-	if err := rows.Err(); err != nil {
 		return service, err
 	}
 
@@ -66,6 +67,17 @@ func CreditService(db *sql.DB, userId uint64, serviceId uint64, amount decimal.D
 	return nil
 }
 
-func CreateService() {
+func CreateService(db *sql.DB, userId uint64, serviceType uint8) (uint64, error) {
+	rows := db.QueryRow("SELECT CREATE_SERVICE($1, $2)", userId, serviceType)
 
+	var serviceId uint64
+	if err := rows.Err(); err != nil {
+		return serviceId, err
+	}
+
+    if err := rows.Scan(&serviceId); err != nil {
+        return serviceId, err
+    }
+
+	return serviceId, nil
 }

@@ -1,14 +1,4 @@
 DROP TABLE IF EXISTS user_service CASCADE;
-CREATE TABLE user_service (
-    id BIGSERIAL,
-    user_id BIGSERIAL,
-    service_id BIGSERIAL,
-    PRIMARY KEY (id),
-    FOREIGN KEY (id) REFERENCES users ON DELETE CASCADE,
-    FOREIGN KEY (id) REFERENCES services ON DELETE CASCADE
-);
-
-
 DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
     id BIGSERIAL,
@@ -18,10 +8,10 @@ CREATE TABLE users (
     PRIMARY KEY (id)
 );
 
+DROP TYPE CURR CASCADE;
+CREATE TYPE curr AS ENUM ('USD', 'CAD', 'JPY', 'NOK');
 
 DROP TABLE IF EXISTS services CASCADE;
-DROP TYPE CURR;
-CREATE TYPE CURR AS ENUM ('USD', 'CAD', 'JPY', 'NOK');
 CREATE TABLE services (
     id BIGSERIAL,
     type SMALLINT,
@@ -32,6 +22,13 @@ CREATE TABLE services (
     PRIMARY KEY (id)
 );
 
+CREATE TABLE user_service (
+    user_id BIGINT,
+    service_id BIGINT,
+    PRIMARY KEY (user_id, service_id),
+    FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services ON DELETE CASCADE
+);
 
 -- create root user with default password
 INSERT INTO users (fullname, username, password) VALUES (
@@ -131,7 +128,7 @@ LANGUAGE 'plpgsql';
 DROP FUNCTION IF EXISTS GET_USER_SERVICES;
 CREATE FUNCTION GET_USER_SERVICES(
     _id BIGINT
-) RETURNS SETOF services AS
+) RETURNS SETOF SERVICES AS
 $$
 BEGIN
     RETURN QUERY SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
@@ -139,6 +136,29 @@ BEGIN
     JOIN user_service us ON u.id = us.user_id
     JOIN services s ON s.id = us.service_id
     WHERE u.id = _id;
+END
+$$
+LANGUAGE 'plpgsql';
+
+DROP FUNCTION IF EXISTS CREATE_SERVICE;
+CREATE FUNCTION CREATE_SERVICE(
+    _user_id BIGINT,
+    _type SMALLINT,
+    _currency CURR,
+    _init_balacne NUMERIC(20, 2)
+) RETURNS BIGINT AS
+$$
+DECLARE
+    res BIGINT;
+BEGIN
+    INSERT INTO services (type, state, currency, init_balance, balance)
+    VALUES (_type, 1, _currency, _init_balacne, 0)
+    RETURNING id INTO res;
+
+    INSERT INTO user_service (user_id, service_id)
+    VALUES (_user_id, res);
+
+    RETURN res;
 END
 $$
 LANGUAGE 'plpgsql';
