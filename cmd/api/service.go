@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/ndfsa/backend-test/cmd/api/dto"
 	"github.com/ndfsa/backend-test/cmd/api/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
 	"github.com/ndfsa/backend-test/internal/token"
@@ -60,11 +61,19 @@ func getService(db *sql.DB) http.HandlerFunc {
 func createService(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// get user ID
+		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
 
 		// get service details from request
+        var service dto.ServiceDto
+        util.Receive[dto.ServiceDto](r.Body, &service)
 
 		// call repository
+        serviceId, err := repository.CreateService(db, userId, service)
+        if err != nil {
+            util.Error(&w, http.StatusInternalServerError, err.Error())
+        }
 
 		// return service ID
+        util.Send(&w, serviceId)
 	})
 }

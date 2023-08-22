@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 
+	"github.com/ndfsa/backend-test/cmd/api/dto"
 	"github.com/ndfsa/backend-test/internal/model"
 	"github.com/shopspring/decimal"
 )
@@ -67,17 +68,21 @@ func CreditService(db *sql.DB, userId uint64, serviceId uint64, amount decimal.D
 	return nil
 }
 
-func CreateService(db *sql.DB, userId uint64, serviceType uint8) (uint64, error) {
-	rows := db.QueryRow("SELECT CREATE_SERVICE($1, $2)", userId, serviceType)
+func CreateService(db *sql.DB, userId uint64, service dto.ServiceDto) (uint64, error) {
+	rows := db.QueryRow("SELECT CREATE_SERVICE($1, $2, $3, $4)",
+		userId,
+		service.Type,
+		service.Currency,
+		service.InitBalance)
 
 	var serviceId uint64
 	if err := rows.Err(); err != nil {
 		return serviceId, err
 	}
 
-    if err := rows.Scan(&serviceId); err != nil {
-        return serviceId, err
-    }
+	if err := rows.Scan(&serviceId); err != nil {
+		return serviceId, err
+	}
 
 	return serviceId, nil
 }
