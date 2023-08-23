@@ -19,7 +19,7 @@ func CreateServiceRoutes(db *sql.DB, baseUrl string) {
 		middleware.Auth)(getService(db)))
 	http.Handle(baseUrl+"/service/create", middleware.Chain(
 		middleware.Logger,
-		middleware.Method(http.MethodGet),
+		middleware.Method(http.MethodPost),
 		middleware.Auth)(createService(db)))
 }
 

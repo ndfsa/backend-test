@@ -5,7 +5,6 @@ import (
 
 	"github.com/ndfsa/backend-test/cmd/api/dto"
 	"github.com/ndfsa/backend-test/internal/model"
-	"github.com/shopspring/decimal"
 )
 
 func GetServices(db *sql.DB, userId uint64) ([]model.Service, error) {
@@ -58,14 +57,6 @@ func GetService(db *sql.DB, userId uint64, serviceId uint64) (model.Service, err
 	}
 
 	return service, nil
-}
-
-func DebitService(db *sql.DB, userId uint64, serviceId uint64, amount decimal.Decimal) error {
-	return nil
-}
-
-func CreditService(db *sql.DB, userId uint64, serviceId uint64, amount decimal.Decimal) error {
-	return nil
 }
 
 func CreateService(db *sql.DB, userId uint64, service dto.ServiceDto) (uint64, error) {
