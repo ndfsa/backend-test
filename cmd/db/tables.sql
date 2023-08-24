@@ -22,12 +22,32 @@ CREATE TABLE services (
     PRIMARY KEY (id)
 );
 
+DROP TABLE IF EXISTS transactions CASCADE;
+CREATE TABLE transactions (
+    id BIGSERIAL,
+    type SMALLINT,
+    state SMALLINT,
+    currency CURR,
+    amount NUMERIC(20, 2),
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE user_service (
     user_id BIGINT,
     service_id BIGINT,
     PRIMARY KEY (user_id, service_id),
     FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services ON DELETE CASCADE
+);
+
+-- transactions from world or to world, are represented as from NULL or to NULL respectively
+CREATE TABLE service_transaction (
+    from_service_id BIGINT,
+    to_service_id BIGINT,
+    transaction_id BIGINT,
+    FOREIGN KEY (from_service_id) REFERENCES services ON DELETE CASCADE,
+    FOREIGN KEY (to_service_id) REFERENCES services ON DELETE CASCADE,
+    FOREIGN KEY (transaction_id) REFERENCES users ON DELETE CASCADE
 );
 
 -- create root user with default password
