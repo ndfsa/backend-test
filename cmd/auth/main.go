@@ -61,6 +61,8 @@ func generateJWT(userId uint64) (string, error) {
 		return "", err
 	}
 
+    // TODO: add refresh token to avoid re-authentication
+
 	return tokenString, nil
 }
 
@@ -103,4 +105,12 @@ func signUpHandler(db *sql.DB) http.Handler {
 
 		fmt.Fprint(w, userId)
 	})
+}
+
+func refreshToken() {
+    // validate tokens
+
+    // generate new tokens
+
+    // send new tokens
 }
