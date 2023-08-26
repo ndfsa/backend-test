@@ -9,7 +9,7 @@ type UserDto struct {
 }
 
 type ServiceDto struct {
-	Type        uint8           `json:"type"`
+	Type        string          `json:"type"`
 	Currency    string          `json:"currency"`
 	InitBalance decimal.Decimal `json:"init_balance"`
 }

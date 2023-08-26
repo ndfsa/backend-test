@@ -9,18 +9,47 @@ CREATE TABLE users (
 );
 
 DROP TYPE CURR CASCADE;
-CREATE TYPE curr AS ENUM ('USD', 'CAD', 'JPY', 'NOK');
+-- USD United States Dollar
+-- CAD Canadian Dollar
+-- JPY Japanese Yen
+-- NOK Norwegian crown
+CREATE TYPE CURR AS ENUM ('USD', 'CAD', 'JPY', 'NOK');
+
+DROP TYPE SERVICE_TYPE CASCADE;
+-- SVA Savings account
+-- CQA Checking account
+-- LON Loan
+-- FTD Fixed time deposit
+-- PFO Portfolio management
+CREATE TYPE SERVICE_TYPE AS ENUM ('SVA', 'CQA', 'LON', 'FTD', 'PFO');
+
+DROP TYPE SERVICE_STATE CASCADE;
+-- REQ Requested service
+-- ACT Active service
+-- FRZ Frozen service
+-- CLD Cancelled service
+CREATE TYPE SERVICE_STATE AS ENUM ('REQ', 'ACT', 'FRZ', 'CLD');
 
 DROP TABLE IF EXISTS services CASCADE;
 CREATE TABLE services (
     id BIGSERIAL,
-    type SMALLINT,
-    state SMALLINT,
+    type SERVICE_TYPE,
+    state SERVICE_STATE,
     currency CURR,
     init_balance NUMERIC(20, 2),
     balance NUMERIC(20, 2),
     PRIMARY KEY (id)
 );
+
+DROP TYPE TRANSACTION_STATE CASCADE;
+-- INIT Initial state
+-- PROC Under investigation
+-- INV Under investigation
+-- ERR Error processing
+-- DONE Transaction processed
+-- CLD Cancelled transaction
+-- RLBK Rolled back transaction
+CREATE TYPE TRANSACTION_STATE AS ENUM ('INIT', 'PROC', 'INV', 'ERR', 'DONE', 'CLD', 'RLBK');
 
 DROP TABLE IF EXISTS transactions CASCADE;
 CREATE TABLE transactions (
