@@ -77,3 +77,13 @@ func CreateService(db *sql.DB, userId uint64, service dto.ServiceDto) (uint64, e
 
 	return serviceId, nil
 }
+
+func CancelService(db *sql.DB, userId uint64, serviceId uint64) error {
+	rows := db.QueryRow("CALL CANCEL_SERVICE($1, $2)", userId, serviceId)
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	return nil
+}

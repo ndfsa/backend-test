@@ -21,6 +21,10 @@ func CreateServiceRoutes(db *sql.DB, baseUrl string) {
 		middleware.Logger,
 		middleware.Method(http.MethodPost),
 		middleware.Auth)(createService(db)))
+	http.Handle(baseUrl+"/service/cancel", middleware.Chain(
+		middleware.Logger,
+		middleware.Method(http.MethodDelete),
+		middleware.Auth)(cancelService(db)))
 }
 
 func getService(db *sql.DB) http.HandlerFunc {
@@ -31,7 +35,7 @@ func getService(db *sql.DB) http.HandlerFunc {
 		// get service param from query
 		serviceIdQuery := r.URL.Query().Get("id")
 		if serviceIdQuery == "" {
-            // if no service ID is found in query, return all services
+			// if no service ID is found in query, return all services
 			services, err := repository.GetServices(db, userId)
 			if err != nil {
 				util.Error(&w, http.StatusInternalServerError, err.Error())
@@ -39,7 +43,7 @@ func getService(db *sql.DB) http.HandlerFunc {
 			}
 
 			util.Send(&w, services)
-            return
+			return
 		}
 		serviceId, err := strconv.ParseUint(serviceIdQuery, 10, 64)
 		if err != nil {
@@ -64,16 +68,39 @@ func createService(db *sql.DB) http.HandlerFunc {
 		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
 
 		// get service details from request
-        var service dto.ServiceDto
-        util.Receive[dto.ServiceDto](r.Body, &service)
+		var service dto.ServiceDto
+		util.Receive[dto.ServiceDto](r.Body, &service)
 
 		// call repository
-        serviceId, err := repository.CreateService(db, userId, service)
-        if err != nil {
-            util.Error(&w, http.StatusInternalServerError, err.Error())
-        }
+		serviceId, err := repository.CreateService(db, userId, service)
+		if err != nil {
+			util.Error(&w, http.StatusInternalServerError, err.Error())
+		}
 
 		// return service ID
-        util.Send(&w, serviceId)
+		util.Send(&w, serviceId)
 	})
+}
+
+func cancelService(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// get user ID
+		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
+		// get service param from query
+		serviceIdQuery := r.URL.Query().Get("id")
+		if serviceIdQuery == "" {
+			// if no service ID is found in query, return all services
+            util.Error(&w, http.StatusBadRequest, "no service id")
+            return
+		}
+		serviceId, err := strconv.ParseUint(serviceIdQuery, 10, 64)
+		if err != nil {
+			util.Error(&w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if err := repository.CancelService(db, userId, serviceId); err != nil {
+			util.Error(&w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
 }
