@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/ndfsa/backend-test/cmd/api/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
 )
 
@@ -24,15 +25,18 @@ func CreateTransactionRoutes(db *sql.DB, baseUrl string) {
 
 func getTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        repository.GetTransaction()
 	})
 }
 
 func executeTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        repository.ExecuteTransaction()
 	})
 }
 
 func rollbackTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        repository.RollbackTransaction()
 	})
 }
