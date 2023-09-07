@@ -19,6 +19,7 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 
 	// http using time.Ticker client to send pings
+    http.Post("", "", nil)
 }
 
 type Server struct {
