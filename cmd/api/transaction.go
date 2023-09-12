@@ -25,18 +25,18 @@ func CreateTransactionRoutes(db *sql.DB, baseUrl string) {
 
 func getTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        repository.GetTransaction()
+		repository.GetTransaction()
 	})
 }
 
 func executeTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        repository.ExecuteTransaction()
+		// repository.ExecuteTransaction()
 	})
 }
 
 func rollbackTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        repository.RollbackTransaction()
+		repository.RollbackTransaction()
 	})
 }

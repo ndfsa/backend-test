@@ -1,6 +1,13 @@
 package repository
 
-func ExecuteTransaction() error {
+import "github.com/shopspring/decimal"
+
+func ExecuteTransaction(
+	userId uint64,
+	from uint64,
+	to uint64,
+	amount decimal.Decimal,
+	currency string) error {
 	return nil
 }
 
