@@ -6,6 +6,7 @@ import (
 
 	"github.com/ndfsa/backend-test/cmd/api/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
+	"github.com/ndfsa/backend-test/internal/token"
 )
 
 func CreateTransactionRoutes(db *sql.DB, baseUrl string) {
@@ -31,7 +32,10 @@ func getTransaction(db *sql.DB) http.HandlerFunc {
 
 func executeTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// repository.ExecuteTransaction()
+		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
+		// maybe make a DTO for this
+
+		repository.ExecuteTransaction(userId)
 	})
 }
 
