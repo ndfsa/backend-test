@@ -1,13 +1,10 @@
 package repository
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/ndfsa/backend-test/cmd/api/dto"
+)
 
-func ExecuteTransaction(
-	userId uint64,
-	from uint64,
-	to uint64,
-	amount decimal.Decimal,
-	currency string) error {
+func ExecuteTransaction(userId uint64, transaction dto.TransactionDto) error {
 	return nil
 }
 

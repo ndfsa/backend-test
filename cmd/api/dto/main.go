@@ -13,3 +13,10 @@ type ServiceDto struct {
 	Currency    string          `json:"currency"`
 	InitBalance decimal.Decimal `json:"init_balance"`
 }
+
+type TransactionDto struct {
+	From     uint64          `json:"from"`
+	To       uint64          `json:"to"`
+	Amount   decimal.Decimal `json:"amount"`
+	Currency string          `json:"currency"`
+}

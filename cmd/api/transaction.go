@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/ndfsa/backend-test/cmd/api/dto"
 	"github.com/ndfsa/backend-test/cmd/api/repository"
 	"github.com/ndfsa/backend-test/internal/middleware"
 	"github.com/ndfsa/backend-test/internal/token"
+	"github.com/ndfsa/backend-test/internal/util"
 )
 
 func CreateTransactionRoutes(db *sql.DB, baseUrl string) {
@@ -35,7 +37,16 @@ func executeTransaction(db *sql.DB) http.HandlerFunc {
 		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
 		// maybe make a DTO for this
 
-		repository.ExecuteTransaction(userId)
+		var transaction dto.TransactionDto
+		if err := util.Receive(r.Body, &transaction); err != nil {
+			util.Error(&w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := repository.ExecuteTransaction(userId, transaction); err != nil {
+			util.Error(&w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	})
 }
 
