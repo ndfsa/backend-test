@@ -16,6 +16,6 @@ func GetTransactions() error {
 	return nil
 }
 
-func RollbackTransaction() {
-
+func RollbackTransaction(userId uint64, transactionId uint64) error {
+	return nil
 }

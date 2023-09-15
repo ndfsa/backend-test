@@ -52,6 +52,9 @@ func executeTransaction(db *sql.DB) http.HandlerFunc {
 
 func rollbackTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		repository.RollbackTransaction()
+		if err := repository.RollbackTransaction(0, 0); err != nil {
+			util.Error(&w, http.StatusBadRequest, err.Error())
+			return
+		}
 	})
 }
