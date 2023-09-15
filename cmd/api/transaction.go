@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 
 	"github.com/ndfsa/backend-test/cmd/api/dto"
 	"github.com/ndfsa/backend-test/cmd/api/repository"
@@ -28,14 +29,37 @@ func CreateTransactionRoutes(db *sql.DB, baseUrl string) {
 
 func getTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		repository.GetTransaction()
+		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
+		transactionIdString := r.URL.Query().Get("id")
+
+		if len(transactionIdString) == 0 {
+			err := repository.GetTransactions(userId)
+			if err != nil {
+				util.Error(&w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			// return transaction list
+		}
+
+		transactionId, err := strconv.ParseUint(transactionIdString, 10, 64)
+		if err != nil {
+			util.Error(&w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		err = repository.GetTransaction(userId, transactionId)
+		if err != nil {
+			util.Error(&w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		// return one transaction
 	})
 }
 
 func executeTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
-		// maybe make a DTO for this
 
 		var transaction dto.TransactionDto
 		if err := util.Receive(r.Body, &transaction); err != nil {

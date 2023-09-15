@@ -8,11 +8,11 @@ func ExecuteTransaction(userId uint64, transaction dto.TransactionDto) error {
 	return nil
 }
 
-func GetTransaction() error {
+func GetTransaction(userId uint64, transactionId uint64) error {
 	return nil
 }
 
-func GetTransactions() error {
+func GetTransactions(userId uint64) error {
 	return nil
 }
 
