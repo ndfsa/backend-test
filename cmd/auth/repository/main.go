@@ -12,13 +12,21 @@ import (
 )
 
 func AuthenticateUser(db *sql.DB, username string, password string) (uint64, error) {
-	row := db.QueryRow("SELECT AUTHENTICATE_USER($1, $2)", username, password)
+	row := db.QueryRow("SELECT password, id FROM users WHERE username = $1", username)
 	if row.Err() != nil {
 		return 0, row.Err()
 	}
 
+	var storedPassword string
 	var id uint64
-	if err := row.Scan(&id); err != nil {
+	if err := row.Scan(&storedPassword, &id); err != nil {
+		return 0, err
+	}
+
+    passwordBytes := []byte(password)
+	reducedPassword := make([]byte, base64.StdEncoding.EncodedLen(len(passwordBytes)))
+    base64.StdEncoding.Encode(reducedPassword, passwordBytes)
+	if err := bcrypt.CompareHashAndPassword([]byte(storedPassword), reducedPassword); err != nil {
 		return 0, err
 	}
 
@@ -31,38 +39,36 @@ func SignUp(db *sql.DB, body io.ReadCloser) (uint64, error) {
 		return 0, err
 	}
 
-	if newUser.Username == "" || newUser.Password == "" {
+	if newUser.Username == "" || newUser.Password == "" || newUser.Fullname == "" {
 		return 0, errors.New("Invalid data")
 	}
 
-    _, err := hashPassword(newUser.Password)
-    if err != nil {
-        return 0, err
-    }
+	hashedPassword, err := hashPassword(newUser.Password)
+	if err != nil {
+		return 0, err
+	}
 
+	row := db.QueryRow(
+		"INSERT INTO users(fullname, username, password) VALUES ($1, $2, $3) RETURNING id",
+		newUser.Fullname, newUser.Username, hashedPassword)
 
-	// row := db.QueryRow("SELECT CREATE_USER($1, $2, $3)",
-	// 	newUser.Fullname,
-	// 	newUser.Username,
-	// 	newUser.Password)
-	//
-	// if err := row.Err(); err != nil {
-	// 	return 0, err
-	// }
-	//
-	// var res uint64
-	// if err := row.Scan(&res); err != nil {
-	// 	return 0, err
-	// }
+	if err := row.Err(); err != nil {
+		return 0, err
+	}
 
-	return 0, nil
+	var res uint64
+	if err := row.Scan(&res); err != nil {
+		return 0, err
+	}
+
+	return res, nil
 }
 
-func hashPassword(password string) (string, error){
-    reducedString := base64.StdEncoding.EncodeToString([]byte(password))
-    hashedString, err := bcrypt.GenerateFromPassword([]byte(reducedString), 0)
-    if err != nil {
-        return "", err
-    }
-    return string(hashedString), nil
+func hashPassword(password string) (string, error) {
+	reducedString := base64.StdEncoding.EncodeToString([]byte(password))
+	hashedString, err := bcrypt.GenerateFromPassword([]byte(reducedString), 0)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedString), nil
 }

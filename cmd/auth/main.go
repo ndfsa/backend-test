@@ -20,7 +20,7 @@ const baseUrl = "/api/v1"
 
 func main() {
 	// connect to database
-	db, err := sql.Open("pgx", "postgres://back:root@localhost:5432/back_test")
+	db, err := sql.Open("pgx", "postgres://back:root@localhost:5432/cardboard_bank")
 	if err != nil {
 		log.Fatalf("unable to connect to database: %v\n", err)
 	}

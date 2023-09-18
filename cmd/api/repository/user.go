@@ -32,7 +32,8 @@ func UpdateUser(db *sql.DB, body io.ReadCloser, userId uint64) error {
 		return err
 	}
 
-	row := db.QueryRow("CALL UPDATE_USER($1, $2, $3)", userId, user.Fullname, user.Username)
+	row := db.QueryRow("UPDATE users SET fullname = $1, username = $2 WHERE id = $3",
+		 user.Fullname, user.Username, userId)
 	if err := row.Err(); err != nil {
 		return err
 	}
