@@ -60,19 +60,28 @@ func GetService(db *sql.DB, userId uint64, serviceId uint64) (model.Service, err
 }
 
 func CreateService(db *sql.DB, userId uint64, service dto.ServiceDto) (uint64, error) {
-	rows := db.QueryRow("SELECT CREATE_SERVICE($1, $2, $3, $4)",
-		userId,
+	idRow := db.QueryRow(`INSERT INTO services (type, state, currency, init_balance, balance)
+        VALUES (&1, 'REQ', &2, $3, 0)
+        RETURNING id`,
 		service.Type,
 		service.Currency,
 		service.InitBalance)
 
 	var serviceId uint64
-	if err := rows.Err(); err != nil {
-		return serviceId, err
+	if err := idRow.Err(); err != nil {
+		return 0, err
 	}
 
-	if err := rows.Scan(&serviceId); err != nil {
-		return serviceId, err
+	if err := idRow.Scan(&serviceId); err != nil {
+		return 0, err
+	}
+
+	rows := db.QueryRow("INSERT INTO user_service (user_id, service_id) VALUES ($1, $2)",
+        userId,
+        serviceId)
+
+	if err := rows.Err(); err != nil {
+		return 0, err
 	}
 
 	return serviceId, nil
