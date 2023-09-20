@@ -12,19 +12,3 @@ BEGIN
 END
 $$
 LANGUAGE 'plpgsql';
-
-
-DROP PROCEDURE IF EXISTS CANCEL_SERVICE;
-CREATE PROCEDURE CANCEL_SERVICE(
-    _user_id BIGINT,
-    _service_id BIGINT
-) AS
-$$
-BEGIN
-    UPDATE services
-    SET state = 'CLD'
-    FROM users JOIN user_service ON users.id = user_id
-    WHERE users.id = _user_id AND services.id = _service_id;
-END
-$$
-LANGUAGE 'plpgsql';

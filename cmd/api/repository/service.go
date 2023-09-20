@@ -77,8 +77,8 @@ func CreateService(db *sql.DB, userId uint64, service dto.ServiceDto) (uint64, e
 	}
 
 	rows := db.QueryRow("INSERT INTO user_service (user_id, service_id) VALUES ($1, $2)",
-        userId,
-        serviceId)
+		userId,
+		serviceId)
 
 	if err := rows.Err(); err != nil {
 		return 0, err
@@ -88,7 +88,11 @@ func CreateService(db *sql.DB, userId uint64, service dto.ServiceDto) (uint64, e
 }
 
 func CancelService(db *sql.DB, userId uint64, serviceId uint64) error {
-	rows := db.QueryRow("CALL CANCEL_SERVICE($1, $2)", userId, serviceId)
+	rows := db.QueryRow(`UPDATE services SET state = 'CLD'
+        FROM users JOIN user_service ON users.id = user_id
+        WHERE users.id = $1 AND services.id = $2`,
+		userId,
+		serviceId)
 
 	if err := rows.Err(); err != nil {
 		return err
