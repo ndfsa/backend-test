@@ -83,5 +83,5 @@ CREATE TABLE service_transaction (
 INSERT INTO users (fullname, username, password) VALUES (
     'root user',
     'root',
-    '$2a$06$DZxsYD5zF5NI/ugKmMmZw.7/hehCmlCpzDOuPutYFmwIlyT37SDGy'
+    '$2a$10$5biVnhUF8E2WDrYCvNynruHh2LbBnw6EUP14R.QVn8Oadixe/4rO2'
 );

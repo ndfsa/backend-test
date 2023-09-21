@@ -32,9 +32,8 @@ func UpdateUser(db *sql.DB, body io.ReadCloser, userId uint64) error {
 		return err
 	}
 
-	row := db.QueryRow("UPDATE users SET fullname = $1, username = $2 WHERE id = $3",
-		 user.Fullname, user.Username, userId)
-	if err := row.Err(); err != nil {
+	if _, err := db.Exec("UPDATE users SET fullname = $1, username = $2 WHERE id = $3",
+		user.Fullname, user.Username, userId); err != nil {
 		return err
 	}
 
@@ -46,10 +45,9 @@ func DeleteUser(db *sql.DB, userId uint64) error {
 		return errors.New("cannot delete root user")
 	}
 
-	row := db.QueryRow("DELETE FROM users WHERE id = $1", userId)
-	if err := row.Err(); err != nil {
+	if _, err := db.Exec("DELETE FROM users WHERE id = $1", userId); err != nil {
 		return err
-	}
+    }
 
 	return nil
 }

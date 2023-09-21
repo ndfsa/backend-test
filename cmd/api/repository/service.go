@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/ndfsa/backend-test/cmd/api/dto"
@@ -8,13 +9,17 @@ import (
 )
 
 func GetServices(db *sql.DB, userId uint64) ([]model.Service, error) {
-	rows, err := db.Query(`SELECT * FROM GET_USER_SERVICES($1)`, userId)
+	rows, err := db.Query(`SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
+        FROM users u
+        JOIN user_service us ON u.id = us.user_id
+        JOIN services s ON s.id = us.service_id
+        WHERE u.id = $1`, userId)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var services []model.Service
+	services := make([]model.Service, 0)
 	for rows.Next() {
 		var service model.Service
 		if err := rows.Scan(
@@ -38,7 +43,11 @@ func GetServices(db *sql.DB, userId uint64) ([]model.Service, error) {
 }
 
 func GetService(db *sql.DB, userId uint64, serviceId uint64) (model.Service, error) {
-	rows := db.QueryRow("SELECT * FROM GET_USER_SERVICES($1) WHERE id = $2", userId, serviceId)
+	rows := db.QueryRow(`SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
+        FROM users u
+        JOIN user_service us ON u.id = us.user_id
+        JOIN services s ON s.id = us.service_id
+        WHERE u.id = $1 AND s.id = $2`, userId, serviceId)
 
 	var service model.Service
 
@@ -59,9 +68,21 @@ func GetService(db *sql.DB, userId uint64, serviceId uint64) (model.Service, err
 	return service, nil
 }
 
-func CreateService(db *sql.DB, userId uint64, service dto.ServiceDto) (uint64, error) {
-	idRow := db.QueryRow(`INSERT INTO services (type, state, currency, init_balance, balance)
-        VALUES (&1, 'REQ', &2, $3, 0)
+func CreateService(
+	ctx context.Context,
+	db *sql.DB,
+	userId uint64,
+	service dto.ServiceDto) (uint64, error) {
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	idRow := tx.QueryRowContext(ctx,
+		`INSERT INTO services (type, state, currency, init_balance, balance)
+        VALUES ($1, 'REQ', $2, $3, 0)
         RETURNING id`,
 		service.Type,
 		service.Currency,
@@ -76,27 +97,28 @@ func CreateService(db *sql.DB, userId uint64, service dto.ServiceDto) (uint64, e
 		return 0, err
 	}
 
-	rows := db.QueryRow("INSERT INTO user_service (user_id, service_id) VALUES ($1, $2)",
+	if _, err := tx.ExecContext(ctx,
+		"INSERT INTO user_service (user_id, service_id) VALUES ($1, $2)",
 		userId,
-		serviceId)
-
-	if err := rows.Err(); err != nil {
+		serviceId); err != nil {
 		return 0, err
 	}
+
+    if err = tx.Commit(); err != nil {
+        return 0, err
+    }
 
 	return serviceId, nil
 }
 
 func CancelService(db *sql.DB, userId uint64, serviceId uint64) error {
-	rows := db.QueryRow(`UPDATE services SET state = 'CLD'
+	if _, err := db.Exec(`UPDATE services SET state = 'CLD'
         FROM users JOIN user_service ON users.id = user_id
         WHERE users.id = $1 AND services.id = $2`,
 		userId,
-		serviceId)
-
-	if err := rows.Err(); err != nil {
+		serviceId); err != nil {
 		return err
-	}
+    }
 
 	return nil
 }

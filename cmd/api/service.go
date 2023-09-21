@@ -72,7 +72,7 @@ func createService(db *sql.DB) http.HandlerFunc {
 		util.Receive[dto.ServiceDto](r.Body, &service)
 
 		// call repository
-		serviceId, err := repository.CreateService(db, userId, service)
+		serviceId, err := repository.CreateService(r.Context(), db, userId, service)
 		if err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 		}
