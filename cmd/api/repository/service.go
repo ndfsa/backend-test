@@ -8,8 +8,8 @@ import (
 	"github.com/ndfsa/backend-test/internal/model"
 )
 
-func GetServices(db *sql.DB, userId uint64) ([]model.Service, error) {
-	rows, err := db.Query(`SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
+func GetServices(ctx context.Context, db *sql.DB, userId uint64) ([]model.Service, error) {
+	rows, err := db.QueryContext(ctx, `SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
         FROM users u
         JOIN user_service us ON u.id = us.user_id
         JOIN services s ON s.id = us.service_id
@@ -42,8 +42,13 @@ func GetServices(db *sql.DB, userId uint64) ([]model.Service, error) {
 	return services, nil
 }
 
-func GetService(db *sql.DB, userId uint64, serviceId uint64) (model.Service, error) {
-	rows := db.QueryRow(`SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
+func GetService(
+	ctx context.Context,
+	db *sql.DB,
+	userId uint64,
+	serviceId uint64) (model.Service, error) {
+
+	rows := db.QueryRowContext(ctx, `SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
         FROM users u
         JOIN user_service us ON u.id = us.user_id
         JOIN services s ON s.id = us.service_id
@@ -104,21 +109,21 @@ func CreateService(
 		return 0, err
 	}
 
-    if err = tx.Commit(); err != nil {
-        return 0, err
-    }
+	if err = tx.Commit(); err != nil {
+		return 0, err
+	}
 
 	return serviceId, nil
 }
 
-func CancelService(db *sql.DB, userId uint64, serviceId uint64) error {
-	if _, err := db.Exec(`UPDATE services SET state = 'CLD'
+func CancelService(ctx context.Context, db *sql.DB, userId uint64, serviceId uint64) error {
+	if _, err := db.ExecContext(ctx, `UPDATE services SET state = 'CLD'
         FROM users JOIN user_service ON users.id = user_id
         WHERE users.id = $1 AND services.id = $2`,
 		userId,
 		serviceId); err != nil {
 		return err
-    }
+	}
 
 	return nil
 }

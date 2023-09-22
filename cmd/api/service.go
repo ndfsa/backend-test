@@ -36,7 +36,7 @@ func getService(db *sql.DB) http.HandlerFunc {
 		serviceIdQuery := r.URL.Query().Get("id")
 		if serviceIdQuery == "" {
 			// if no service ID is found in query, return all services
-			services, err := repository.GetServices(db, userId)
+			services, err := repository.GetServices(r.Context(), db, userId)
 			if err != nil {
 				util.Error(&w, http.StatusInternalServerError, err.Error())
 				return
@@ -52,7 +52,7 @@ func getService(db *sql.DB) http.HandlerFunc {
 		}
 
 		// get all user services
-		services, err := repository.GetService(db, userId, serviceId)
+		services, err := repository.GetService(r.Context(), db, userId, serviceId)
 		if err != nil {
 			util.Error(&w, http.StatusNoContent, err.Error())
 			return
@@ -98,7 +98,7 @@ func cancelService(db *sql.DB) http.HandlerFunc {
 			util.Error(&w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if err := repository.CancelService(db, userId, serviceId); err != nil {
+		if err := repository.CancelService(r.Context(), db, userId, serviceId); err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}

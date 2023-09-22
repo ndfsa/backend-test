@@ -33,7 +33,7 @@ func getUserHandler(db *sql.DB) http.Handler {
 		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
 
 		// get user from database
-		user, err := repository.ReadUser(db, userId)
+		user, err := repository.ReadUser(r.Context(), db, userId)
 		if err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
@@ -49,7 +49,7 @@ func updateUserHandler(db *sql.DB) http.Handler {
 		// open jwt to retrieve userId
 		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
 
-		if err := repository.UpdateUser(db, r.Body, userId); err != nil {
+		if err := repository.UpdateUser(r.Context(), db, r.Body, userId); err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -62,7 +62,7 @@ func deleteUserHandler(db *sql.DB) http.Handler {
 		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
 
 		// delete user from database
-		if err := repository.DeleteUser(db, userId); err != nil {
+		if err := repository.DeleteUser(r.Context(), db, userId); err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}

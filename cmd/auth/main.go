@@ -79,7 +79,7 @@ func auth(db *sql.DB) http.Handler {
 			return
 		}
 
-		userId, err := repository.AuthenticateUser(db, user.Username, user.Password)
+		userId, err := repository.AuthenticateUser(r.Context(), db, user.Username, user.Password)
 		if err != nil {
 			util.Error(&w, http.StatusUnauthorized, err.Error())
 			return
@@ -97,7 +97,7 @@ func auth(db *sql.DB) http.Handler {
 
 func signUpHandler(db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userId, err := repository.SignUp(db, r.Body)
+		userId, err := repository.SignUp(r.Context(), db, r.Body)
 		if err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
