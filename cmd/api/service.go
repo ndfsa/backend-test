@@ -30,7 +30,7 @@ func CreateServiceRoutes(db *sql.DB, baseUrl string) {
 func getService(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// get user id from header
-		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
+		userId, _ := token.GetUserId(r)
 
 		// get service param from query
 		serviceIdQuery := r.URL.Query().Get("id")
@@ -65,7 +65,7 @@ func getService(db *sql.DB) http.HandlerFunc {
 func createService(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// get user ID
-		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
+		userId, _ := token.GetUserId(r)
 
 		// get service details from request
 		var service dto.ServiceDto
@@ -85,7 +85,7 @@ func createService(db *sql.DB) http.HandlerFunc {
 func cancelService(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get user ID
-		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
+		userId, _ := token.GetUserId(r)
 		// get service param from query
 		serviceIdQuery := r.URL.Query().Get("id")
 		if serviceIdQuery == "" {

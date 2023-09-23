@@ -41,7 +41,7 @@ func main() {
 }
 
 func generateJWT(userId uint64) (string, error) {
-	claims := token.CustomClaims{
+	claims := token.AccessTokenClaims{
 		User: userId,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),

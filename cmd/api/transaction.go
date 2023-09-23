@@ -29,7 +29,7 @@ func CreateTransactionRoutes(db *sql.DB, baseUrl string) {
 
 func getTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
+		userId, _ := token.GetUserId(r)
 		transactionIdString := r.URL.Query().Get("id")
 
 		if len(transactionIdString) == 0 {
@@ -59,7 +59,7 @@ func getTransaction(db *sql.DB) http.HandlerFunc {
 
 func executeTransaction(db *sql.DB) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userId, _ := token.GetUserId(r.Header.Get("Authorization"))
+		userId, _ := token.GetUserId(r)
 
 		var transaction dto.TransactionDto
 		if err := util.Receive(r.Body, &transaction); err != nil {
