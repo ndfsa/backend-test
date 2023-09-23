@@ -67,7 +67,7 @@ func executeTransaction(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		if err := repository.ExecuteTransaction(userId, transaction); err != nil {
+		if err := repository.ExecuteTransaction(r.Context(), db, userId, transaction); err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}

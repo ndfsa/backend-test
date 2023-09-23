@@ -1,10 +1,19 @@
 package repository
 
 import (
+	"context"
+	"database/sql"
+
 	"github.com/ndfsa/backend-test/cmd/api/dto"
 )
 
-func ExecuteTransaction(userId uint64, transaction dto.TransactionDto) error {
+func ExecuteTransaction(
+    ctx context.Context,
+    db *sql.DB,
+    userId uint64,
+    transaction dto.TransactionDto) error {
+
+
 	return nil
 }
 
