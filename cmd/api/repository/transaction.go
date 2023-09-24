@@ -8,11 +8,18 @@ import (
 )
 
 func ExecuteTransaction(
-    ctx context.Context,
-    db *sql.DB,
-    userId uint64,
-    transaction dto.TransactionDto) error {
+	ctx context.Context,
+	db *sql.DB,
+	userId uint64,
+	transaction dto.TransactionDto) error {
 
+	if _, err := db.ExecContext(ctx, `update services as s
+        set balance = balance + c.amount
+        from (values ($2, -$1), ($3, $1))
+        as c(to_id, amount)
+        where c.to_id = s.id`, transaction.Amount, transaction.From, transaction.To); err != nil {
+		return err
+	}
 
 	return nil
 }
