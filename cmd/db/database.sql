@@ -54,7 +54,6 @@ CREATE TYPE TRANSACTION_STATE AS ENUM ('INIT', 'PROC', 'INV', 'ERR', 'DONE', 'CL
 DROP TABLE IF EXISTS transactions CASCADE;
 CREATE TABLE transactions (
     id BIGSERIAL,
-    type SMALLINT,
     state SMALLINT,
     currency CURR,
     amount NUMERIC(20, 2),
@@ -70,13 +69,16 @@ CREATE TABLE user_service (
 );
 
 -- transactions from world or to world, are represented as from NULL or to NULL respectively
+DROP TABLE IF EXISTS service_transaction CASCADE;
 CREATE TABLE service_transaction (
+    transaction_id BIGINT,
     from_service_id BIGINT,
     to_service_id BIGINT,
-    transaction_id BIGINT,
+    user_id BIGINT,
+    FOREIGN KEY (transaction_id) REFERENCES transactions ON DELETE CASCADE,
     FOREIGN KEY (from_service_id) REFERENCES services ON DELETE CASCADE,
     FOREIGN KEY (to_service_id) REFERENCES services ON DELETE CASCADE,
-    FOREIGN KEY (transaction_id) REFERENCES users ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE
 );
 
 -- create root user with default password
