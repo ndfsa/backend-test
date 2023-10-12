@@ -26,13 +26,15 @@ func main() {
 	}
 	defer db.Close()
 
+    repo := repository.NewAuthRepository(db)
+
 	// setup routes
 	http.Handle(baseUrl+"/auth", middleware.Chain(
 		middleware.Logger,
-		middleware.UploadLimit(1000))(auth(db)))
+		middleware.UploadLimit(1000))(auth(repo)))
 	http.Handle(baseUrl+"/auth/signup", middleware.Chain(
 		middleware.Logger,
-		middleware.UploadLimit(1000))(signUpHandler(db)))
+		middleware.UploadLimit(1000))(signUpHandler(repo)))
 
 	// start server
 	if err := http.ListenAndServe(":4001", nil); err != nil {
@@ -66,7 +68,7 @@ func generateJWT(userId uint64) (string, error) {
 	return tokenString, nil
 }
 
-func auth(db *sql.DB) http.Handler {
+func auth(repo repository.AuthRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var user dto.AuthUserDTO
 		if err := util.Receive(r.Body, &user); err != nil {
@@ -79,7 +81,7 @@ func auth(db *sql.DB) http.Handler {
 			return
 		}
 
-		userId, err := repository.AuthenticateUser(r.Context(), db, user.Username, user.Password)
+		userId, err := repo.AuthenticateUser(r.Context(), user.Username, user.Password)
 		if err != nil {
 			util.Error(&w, http.StatusUnauthorized, err.Error())
 			return
@@ -95,9 +97,9 @@ func auth(db *sql.DB) http.Handler {
 	})
 }
 
-func signUpHandler(db *sql.DB) http.Handler {
+func signUpHandler(repo repository.AuthRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userId, err := repository.SignUp(r.Context(), db, r.Body)
+		userId, err := repo.SignUp(r.Context(), r.Body)
 		if err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return

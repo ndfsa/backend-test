@@ -12,13 +12,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func AuthenticateUser(
+type AuthRepository struct {
+	db *sql.DB
+}
+
+func NewAuthRepository(db *sql.DB) AuthRepository {
+	return AuthRepository{db}
+}
+
+func (r *AuthRepository) AuthenticateUser(
 	ctx context.Context,
-	db *sql.DB,
 	username string,
 	password string) (uint64, error) {
 
-	row := db.QueryRowContext(ctx, "SELECT password, id FROM users WHERE username = $1", username)
+	row := r.db.QueryRowContext(ctx, "SELECT password, id FROM users WHERE username = $1", username)
 	if row.Err() != nil {
 		return 0, row.Err()
 	}
@@ -39,7 +46,7 @@ func AuthenticateUser(
 	return id, nil
 }
 
-func SignUp(ctx context.Context, db *sql.DB, body io.ReadCloser) (uint64, error) {
+func (r *AuthRepository) SignUp(ctx context.Context, body io.ReadCloser) (uint64, error) {
 	var newUser dto.SignUpDTO
 	if err := util.Receive(body, &newUser); err != nil {
 		return 0, err
@@ -54,7 +61,7 @@ func SignUp(ctx context.Context, db *sql.DB, body io.ReadCloser) (uint64, error)
 		return 0, err
 	}
 
-	row := db.QueryRowContext(ctx,
+	row := r.db.QueryRowContext(ctx,
 		"INSERT INTO users(fullname, username, password) VALUES ($1, $2, $3) RETURNING id",
 		newUser.Fullname, newUser.Username, hashedPassword)
 

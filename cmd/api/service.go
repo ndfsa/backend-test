@@ -13,21 +13,23 @@ import (
 )
 
 func CreateServiceRoutes(db *sql.DB, baseUrl string) {
+	repo := repository.NewServicesRepository(db)
+
 	http.Handle(baseUrl+"/service", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodGet),
-		middleware.Auth)(getService(db)))
+		middleware.Auth)(get(repo)))
 	http.Handle(baseUrl+"/service/create", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodPost),
-		middleware.Auth)(createService(db)))
+		middleware.Auth)(create(repo)))
 	http.Handle(baseUrl+"/service/cancel", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodDelete),
-		middleware.Auth)(cancelService(db)))
+		middleware.Auth)(cancel(repo)))
 }
 
-func getService(db *sql.DB) http.HandlerFunc {
+func get(repo repository.ServicesRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// get user id from header
 		userId, _ := token.GetUserId(r)
@@ -36,7 +38,7 @@ func getService(db *sql.DB) http.HandlerFunc {
 		serviceIdQuery := r.URL.Query().Get("id")
 		if serviceIdQuery == "" {
 			// if no service ID is found in query, return all services
-			services, err := repository.GetServices(r.Context(), db, userId)
+			services, err := repo.GetAll(r.Context(), userId)
 			if err != nil {
 				util.Error(&w, http.StatusInternalServerError, err.Error())
 				return
@@ -52,7 +54,7 @@ func getService(db *sql.DB) http.HandlerFunc {
 		}
 
 		// get all user services
-		services, err := repository.GetService(r.Context(), db, userId, serviceId)
+		services, err := repo.Get(r.Context(), userId, serviceId)
 		if err != nil {
 			util.Error(&w, http.StatusNoContent, err.Error())
 			return
@@ -62,7 +64,7 @@ func getService(db *sql.DB) http.HandlerFunc {
 	})
 }
 
-func createService(db *sql.DB) http.HandlerFunc {
+func create(repo repository.ServicesRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// get user ID
 		userId, _ := token.GetUserId(r)
@@ -72,7 +74,7 @@ func createService(db *sql.DB) http.HandlerFunc {
 		util.Receive[dto.ServiceDto](r.Body, &service)
 
 		// call repository
-		serviceId, err := repository.CreateService(r.Context(), db, userId, service)
+		serviceId, err := repo.Create(r.Context(), userId, service)
 		if err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 		}
@@ -82,7 +84,7 @@ func createService(db *sql.DB) http.HandlerFunc {
 	})
 }
 
-func cancelService(db *sql.DB) http.HandlerFunc {
+func cancel(repo repository.ServicesRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get user ID
 		userId, _ := token.GetUserId(r)
@@ -90,15 +92,15 @@ func cancelService(db *sql.DB) http.HandlerFunc {
 		serviceIdQuery := r.URL.Query().Get("id")
 		if serviceIdQuery == "" {
 			// if no service ID is found in query, return all services
-            util.Error(&w, http.StatusBadRequest, "no service id")
-            return
+			util.Error(&w, http.StatusBadRequest, "no service id")
+			return
 		}
 		serviceId, err := strconv.ParseUint(serviceIdQuery, 10, 64)
 		if err != nil {
 			util.Error(&w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if err := repository.CancelService(r.Context(), db, userId, serviceId); err != nil {
+		if err := repo.Cancel(r.Context(), userId, serviceId); err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}

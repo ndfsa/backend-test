@@ -12,28 +12,31 @@ import (
 	"github.com/ndfsa/backend-test/internal/util"
 )
 
+
 func CreateTransactionRoutes(db *sql.DB, baseUrl string) {
+    repo := repository.NewTransactionsRepository(db)
+
 	http.Handle(baseUrl+"/transaction", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodGet),
-		middleware.Auth)(getTransaction(db)))
+		middleware.Auth)(getTransaction(repo)))
 	http.Handle(baseUrl+"/transaction/execute", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodPost),
-		middleware.Auth)(executeTransaction(db)))
+		middleware.Auth)(executeTransaction(repo)))
 	http.Handle(baseUrl+"/transaction/rollback", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodDelete),
-		middleware.Auth)(rollbackTransaction(db)))
+		middleware.Auth)(rollbackTransaction(repo)))
 }
 
-func getTransaction(db *sql.DB) http.HandlerFunc {
+func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userId, _ := token.GetUserId(r)
 		transactionIdString := r.URL.Query().Get("id")
 
 		if len(transactionIdString) == 0 {
-			err := repository.GetTransactions(userId)
+			err := repo.GetAll(userId)
 			if err != nil {
 				util.Error(&w, http.StatusInternalServerError, err.Error())
 				return
@@ -47,7 +50,7 @@ func getTransaction(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		err = repository.GetTransaction(userId, transactionId)
+		err = repo.Get(userId, transactionId)
 		if err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
@@ -57,7 +60,7 @@ func getTransaction(db *sql.DB) http.HandlerFunc {
 	})
 }
 
-func executeTransaction(db *sql.DB) http.HandlerFunc {
+func executeTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userId, _ := token.GetUserId(r)
 
@@ -67,16 +70,16 @@ func executeTransaction(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		if err := repository.ExecuteTransaction(r.Context(), db, userId, transaction); err != nil {
+		if err := repo.Execute(r.Context(), userId, transaction); err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	})
 }
 
-func rollbackTransaction(db *sql.DB) http.HandlerFunc {
+func rollbackTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := repository.RollbackTransaction(0, 0); err != nil {
+		if err := repo.Rollback(0, 0); err != nil {
 			util.Error(&w, http.StatusBadRequest, err.Error())
 			return
 		}

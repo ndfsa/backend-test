@@ -8,8 +8,19 @@ import (
 	"github.com/ndfsa/backend-test/internal/model"
 )
 
-func GetServices(ctx context.Context, db *sql.DB, userId uint64) ([]model.Service, error) {
-	rows, err := db.QueryContext(ctx, `SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
+type ServicesRepository struct {
+	db *sql.DB
+}
+
+func NewServicesRepository(db *sql.DB) ServicesRepository {
+	return ServicesRepository{db}
+}
+
+func (r *ServicesRepository) GetAll(
+	ctx context.Context,
+	userId uint64) ([]model.Service, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
         FROM users u
         JOIN user_service us ON u.id = us.user_id
         JOIN services s ON s.id = us.service_id
@@ -42,13 +53,13 @@ func GetServices(ctx context.Context, db *sql.DB, userId uint64) ([]model.Servic
 	return services, nil
 }
 
-func GetService(
+func (r *ServicesRepository) Get(
 	ctx context.Context,
-	db *sql.DB,
 	userId uint64,
 	serviceId uint64) (model.Service, error) {
 
-	rows := db.QueryRowContext(ctx, `SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
+	rows := r.db.QueryRowContext(ctx,
+		`SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
         FROM users u
         JOIN user_service us ON u.id = us.user_id
         JOIN services s ON s.id = us.service_id
@@ -73,13 +84,12 @@ func GetService(
 	return service, nil
 }
 
-func CreateService(
+func (r *ServicesRepository) Create(
 	ctx context.Context,
-	db *sql.DB,
 	userId uint64,
 	service dto.ServiceDto) (uint64, error) {
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -116,8 +126,11 @@ func CreateService(
 	return serviceId, nil
 }
 
-func CancelService(ctx context.Context, db *sql.DB, userId uint64, serviceId uint64) error {
-	if _, err := db.ExecContext(ctx, `UPDATE services SET state = 'CLD'
+func (r *ServicesRepository) Cancel(
+	ctx context.Context,
+	userId uint64,
+	serviceId uint64) error {
+	if _, err := r.db.ExecContext(ctx, `UPDATE services SET state = 'CLD'
         FROM users JOIN user_service ON users.id = user_id
         WHERE users.id = $1 AND services.id = $2`,
 		userId,

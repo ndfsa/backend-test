@@ -11,29 +11,31 @@ import (
 )
 
 func CreateUserRoutes(db *sql.DB, baseUrl string) {
+	repo := repository.NewUsersRepository(db)
+
 	http.Handle(baseUrl+"/user", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodGet),
-		middleware.Auth)(getUserHandler(db)))
+		middleware.Auth)(getUserHandler(repo)))
 
 	http.Handle(baseUrl+"/user/update", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodPut),
-		middleware.Auth)(updateUserHandler(db)))
+		middleware.Auth)(updateUserHandler(repo)))
 
 	http.Handle(baseUrl+"/user/delete", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodDelete),
-		middleware.Auth)(deleteUserHandler(db)))
+		middleware.Auth)(deleteUserHandler(repo)))
 }
 
-func getUserHandler(db *sql.DB) http.Handler {
+func getUserHandler(repo repository.UsersRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// open jwt to retrieve userId
 		userId, _ := token.GetUserId(r)
 
 		// get user from database
-		user, err := repository.ReadUser(r.Context(), db, userId)
+		user, err := repo.Get(r.Context(), userId)
 		if err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
@@ -44,25 +46,25 @@ func getUserHandler(db *sql.DB) http.Handler {
 	})
 }
 
-func updateUserHandler(db *sql.DB) http.Handler {
+func updateUserHandler(repo repository.UsersRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// open jwt to retrieve userId
 		userId, _ := token.GetUserId(r)
 
-		if err := repository.UpdateUser(r.Context(), db, r.Body, userId); err != nil {
+		if err := repo.Update(r.Context(), r.Body, userId); err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	})
 }
 
-func deleteUserHandler(db *sql.DB) http.Handler {
+func deleteUserHandler(repo repository.UsersRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// open jwt to retrieve userId
 		userId, _ := token.GetUserId(r)
 
 		// delete user from database
-		if err := repository.DeleteUser(r.Context(), db, userId); err != nil {
+		if err := repo.Delete(r.Context(), userId); err != nil {
 			util.Error(&w, http.StatusInternalServerError, err.Error())
 			return
 		}

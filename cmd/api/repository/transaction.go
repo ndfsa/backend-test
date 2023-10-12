@@ -8,31 +8,38 @@ import (
 	"github.com/ndfsa/backend-test/cmd/api/dto"
 )
 
-func ExecuteTransaction(
+type TransactionsRepository struct {
+	db *sql.DB
+}
+
+func NewTransactionsRepository(db *sql.DB) TransactionsRepository {
+	return TransactionsRepository{db}
+}
+
+func (r *TransactionsRepository) Execute(
 	ctx context.Context,
-	db *sql.DB,
 	userId uint64,
 	transaction dto.TransactionDto) error {
 
-    // check if user owns source service
-    row := db.QueryRowContext(ctx, `SELECT EXISTS (
+	// check if user owns source service
+	row := r.db.QueryRowContext(ctx, `SELECT EXISTS (
         SELECT 1 FROM users u
         JOIN user_service us ON u.id = us.user_id
         JOIN services s ON s.id = us.service_id
         WHERE u.id = $1 AND s.id = $2)`, userId, transaction.From)
-    if err := row.Err(); err != nil {
-        return err
-    }
-    var belongsToUser bool
-    if err := row.Scan(&belongsToUser); err != nil {
-        return err
-    }
+	if err := row.Err(); err != nil {
+		return err
+	}
+	var belongsToUser bool
+	if err := row.Scan(&belongsToUser); err != nil {
+		return err
+	}
 
-    if !belongsToUser {
-        return errors.New("source service does not belong to user")
-    }
+	if !belongsToUser {
+		return errors.New("source service does not belong to user")
+	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -75,14 +82,14 @@ func ExecuteTransaction(
 	return nil
 }
 
-func GetTransaction(userId uint64, transactionId uint64) error {
+func (r *TransactionsRepository) Get(userId uint64, transactionId uint64) error {
 	return nil
 }
 
-func GetTransactions(userId uint64) error {
+func (r *TransactionsRepository) GetAll(userId uint64) error {
 	return nil
 }
 
-func RollbackTransaction(userId uint64, transactionId uint64) error {
+func (r *TransactionsRepository) Rollback(userId uint64, transactionId uint64) error {
 	return nil
 }
