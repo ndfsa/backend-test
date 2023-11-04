@@ -12,21 +12,21 @@ import (
 	"github.com/ndfsa/backend-test/internal/util"
 )
 
-func CreateServiceRoutes(db *sql.DB, baseUrl string) {
+func CreateServiceRoutes(db *sql.DB, baseUrl string, key string) {
 	repo := repository.NewServicesRepository(db)
 
 	http.Handle(baseUrl+"/service", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodGet),
-		middleware.Auth)(get(repo)))
+		middleware.Auth(key))(get(repo)))
 	http.Handle(baseUrl+"/service/create", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodPost),
-		middleware.Auth)(create(repo)))
+		middleware.Auth(key))(create(repo)))
 	http.Handle(baseUrl+"/service/cancel", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodDelete),
-		middleware.Auth)(cancel(repo)))
+		middleware.Auth(key))(cancel(repo)))
 }
 
 func get(repo repository.ServicesRepository) http.HandlerFunc {

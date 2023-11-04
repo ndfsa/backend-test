@@ -10,23 +10,23 @@ import (
 	"github.com/ndfsa/backend-test/internal/util"
 )
 
-func CreateUserRoutes(db *sql.DB, baseUrl string) {
+func CreateUserRoutes(db *sql.DB, baseUrl string, key string) {
 	repo := repository.NewUsersRepository(db)
 
 	http.Handle(baseUrl+"/user", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodGet),
-		middleware.Auth)(getUserHandler(repo)))
+		middleware.Auth(key))(getUserHandler(repo)))
 
 	http.Handle(baseUrl+"/user/update", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodPut),
-		middleware.Auth)(updateUserHandler(repo)))
+		middleware.Auth(key))(updateUserHandler(repo)))
 
 	http.Handle(baseUrl+"/user/delete", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodDelete),
-		middleware.Auth)(deleteUserHandler(repo)))
+		middleware.Auth(key))(deleteUserHandler(repo)))
 }
 
 func getUserHandler(repo repository.UsersRepository) http.Handler {

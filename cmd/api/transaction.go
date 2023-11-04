@@ -13,21 +13,21 @@ import (
 )
 
 
-func CreateTransactionRoutes(db *sql.DB, baseUrl string) {
+func CreateTransactionRoutes(db *sql.DB, baseUrl string, key string) {
     repo := repository.NewTransactionsRepository(db)
 
 	http.Handle(baseUrl+"/transaction", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodGet),
-		middleware.Auth)(getTransaction(repo)))
+		middleware.Auth(key))(getTransaction(repo)))
 	http.Handle(baseUrl+"/transaction/execute", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodPost),
-		middleware.Auth)(executeTransaction(repo)))
+		middleware.Auth(key))(executeTransaction(repo)))
 	http.Handle(baseUrl+"/transaction/rollback", middleware.Chain(
 		middleware.Logger,
 		middleware.Method(http.MethodDelete),
-		middleware.Auth)(rollbackTransaction(repo)))
+		middleware.Auth(key))(rollbackTransaction(repo)))
 }
 
 func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {

@@ -10,16 +10,18 @@ import (
 
 type Middleware = func(http.Handler) http.Handler
 
-func Auth(next http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			err := token.ValidateAccessToken(r)
-			if err != nil {
-                util.Error(&w, http.StatusUnauthorized, err.Error())
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
+func Auth(key string) Middleware {
+	return Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				err := token.ValidateAccessToken(r, key)
+				if err != nil {
+					util.Error(&w, http.StatusUnauthorized, err.Error())
+					return
+				}
+				next.ServeHTTP(w, r)
+			})
+	})
 }
 
 func UploadLimit(limit int64) Middleware {
@@ -27,7 +29,7 @@ func UploadLimit(limit int64) Middleware {
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.ContentLength > int64(limit) {
-                    util.Error(&w, http.StatusRequestEntityTooLarge, "request too large")
+					util.Error(&w, http.StatusRequestEntityTooLarge, "request too large")
 					return
 				}
 				next.ServeHTTP(w, r)

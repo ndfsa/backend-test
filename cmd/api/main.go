@@ -8,7 +8,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-const baseUrl = "/api/v1"
+const (
+	tokenKey = "test-application"
+	baseUrl  = "/api/v1"
+)
 
 func main() {
 	// create database connection
@@ -18,8 +21,8 @@ func main() {
 	}
 	defer db.Close()
 
-    CreateUserRoutes(db, baseUrl)
-    CreateServiceRoutes(db, baseUrl)
+	CreateUserRoutes(db, baseUrl, tokenKey)
+	CreateServiceRoutes(db, baseUrl, tokenKey)
 
 	if err = http.ListenAndServe(":4000", nil); err != nil {
 		log.Fatal(err)

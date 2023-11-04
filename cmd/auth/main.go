@@ -16,7 +16,10 @@ import (
 	"github.com/ndfsa/backend-test/internal/util"
 )
 
-const baseUrl = "/api/v1"
+const (
+	tokenKey = "test-application"
+	baseUrl   = "/api/v1"
+)
 
 func main() {
 	// connect to database
@@ -26,7 +29,7 @@ func main() {
 	}
 	defer db.Close()
 
-    repo := repository.NewAuthRepository(db)
+	repo := repository.NewAuthRepository(db)
 
 	// setup routes
 	http.Handle(baseUrl+"/auth", middleware.Chain(
@@ -34,6 +37,10 @@ func main() {
 		middleware.UploadLimit(1000))(auth(repo)))
 	http.Handle(baseUrl+"/auth/signup", middleware.Chain(
 		middleware.Logger,
+		middleware.UploadLimit(1000))(signUpHandler(repo)))
+	http.Handle(baseUrl+"/auth/refresh", middleware.Chain(
+		middleware.Logger,
+		middleware.Auth(tokenKey),
 		middleware.UploadLimit(1000))(signUpHandler(repo)))
 
 	// start server
@@ -58,12 +65,12 @@ func generateJWT(userId uint64) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenString, err := token.SignedString([]byte("test-application"))
+	tokenString, err := token.SignedString([]byte(tokenKey))
 	if err != nil {
 		return "", err
 	}
 
-    // TODO: add refresh token to avoid re-authentication
+	// TODO: add refresh token to avoid re-authentication
 
 	return tokenString, nil
 }
@@ -110,9 +117,9 @@ func signUpHandler(repo repository.AuthRepository) http.Handler {
 }
 
 func refreshToken() {
-    // validate tokens
+	// validate tokens
 
-    // generate new tokens
+	// generate new tokens
 
-    // send new tokens
+	// send new tokens
 }

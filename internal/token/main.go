@@ -48,7 +48,7 @@ func GetUserIdRef(r *http.Request) (uint64, error) {
 	return claims.User, nil
 }
 
-func ValidateAccessToken(r *http.Request) error {
+func ValidateAccessToken(r *http.Request, key string) error {
 	tokenString, err := ValidateToken(r)
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func ValidateAccessToken(r *http.Request) error {
 	token, err := jwt.ParseWithClaims(tokenString,
 		&AccessTokenClaims{},
 		func(token *jwt.Token) (interface{}, error) {
-			return []byte("test-application"), nil
+			return []byte(key), nil
 		},
 		jwt.WithLeeway(1*time.Second),
 		jwt.WithValidMethods([]string{"RS256", "HS256"}))

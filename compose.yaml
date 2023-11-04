@@ -1,8 +1,14 @@
 version: '3.8'
+
+networks:
+  bank_net:
+
 services:
   postgres:
     image: postgres:alpine
     container_name: postgres-db
+    networks:
+      - bank_net
     restart: always
     environment:
       POSTGRES_PASSWORD: toor
@@ -10,3 +16,4 @@ services:
       - .build/.data/:/var/lib/postgresql/data
     ports:
       - 5432:5432
+
