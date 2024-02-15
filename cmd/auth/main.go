@@ -14,7 +14,7 @@ import (
 )
 
 const (
-    // 32-byte key
+	// 32-byte key
 	tokenKey = "2bbb515c1311dd69a609a0d553dc7ac1ac8eadc2b22daa9aaa99483d2f381374"
 )
 
@@ -26,14 +26,14 @@ func main() {
 	}
 	defer db.Close()
 
-    log.Println(tokenKey)
+	log.Println(tokenKey)
 
 	repo := repository.NewAuthRepository(db)
 
 	// setup routes
 	http.Handle("POST /auth", middleware.Basic(authorizeUser(repo)))
 	http.Handle("POST /auth/signup", middleware.Basic(signUp(repo)))
-	http.Handle("POST /auth/refresh", middleware.Basic(refreshToken(repo)))
+	http.Handle("GET /auth/refresh", middleware.Basic(refreshToken(repo)))
 
 	// start server
 	if err := http.ListenAndServe(":3000", nil); err != nil {
@@ -88,12 +88,34 @@ func signUp(repo repository.AuthRepository) http.HandlerFunc {
 	}
 }
 
-func refreshToken(repository.AuthRepository) http.HandlerFunc {
+func refreshToken(repo repository.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// validate tokens
+		encodedToken := r.Header.Get("Authorization")
+		if err := token.ValidateAccessToken(encodedToken, tokenKey); err != nil {
+			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			return
+		}
 
-		// generate new tokens
+        userId, err := token.GetUserId(encodedToken, tokenKey)
+        if err != nil {
+			util.SendError(&w, http.StatusUnauthorized, err.Error())
+            return
+        }
 
-		// send new tokens
+		accessTokenString, err := token.GenerateAccessToken(userId, tokenKey)
+		if err != nil {
+			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			return
+		}
+		refreshTokenString, err := token.GenerateRefreshToken(userId, tokenKey)
+		if err != nil {
+			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		util.Send(&w, dto.TokenDTO{
+			AccessToken:  accessTokenString,
+			RefreshToken: refreshTokenString,
+		})
 	}
 }
