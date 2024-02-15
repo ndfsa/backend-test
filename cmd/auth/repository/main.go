@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/google/uuid"
 	"github.com/ndfsa/backend-test/cmd/auth/dto"
 	"github.com/ndfsa/backend-test/internal/util"
 	"golang.org/x/crypto/bcrypt"
@@ -23,65 +24,56 @@ func NewAuthRepository(db *sql.DB) AuthRepository {
 func (r *AuthRepository) AuthenticateUser(
 	ctx context.Context,
 	username string,
-	password string) (uint64, error) {
+	password string) (uuid.UUID, error) {
 
-	row := r.db.QueryRowContext(ctx, "SELECT password, id FROM users WHERE username = $1", username)
+	row := r.db.QueryRowContext(
+		ctx,
+		"SELECT password, id FROM users WHERE username = $1",
+		username)
 	if row.Err() != nil {
-		return 0, row.Err()
+		return uuid.UUID{}, row.Err()
 	}
 
-	var storedPassword string
-	var id uint64
-	if err := row.Scan(&storedPassword, &id); err != nil {
-		return 0, err
+	var storedPass string
+	var id uuid.UUID
+	if err := row.Scan(&storedPass, &id); err != nil {
+		return uuid.UUID{}, err
 	}
 
-	passwordBytes := []byte(password)
-	reducedPassword := make([]byte, base64.StdEncoding.EncodedLen(len(passwordBytes)))
-	base64.StdEncoding.Encode(reducedPassword, passwordBytes)
-	if err := bcrypt.CompareHashAndPassword([]byte(storedPassword), reducedPassword); err != nil {
-		return 0, err
+	passBytes := []byte(password)
+
+	// reduce string to base 64 to avoid dealing with unicode
+	reducedPass := make([]byte, base64.StdEncoding.EncodedLen(len(passBytes)))
+	base64.StdEncoding.Encode(reducedPass, passBytes)
+	if err := bcrypt.CompareHashAndPassword([]byte(storedPass), reducedPass); err != nil {
+		return uuid.UUID{}, err
 	}
 
 	return id, nil
 }
 
-func (r *AuthRepository) SignUp(ctx context.Context, body io.ReadCloser) (uint64, error) {
+func (r *AuthRepository) CreateUser(ctx context.Context, body io.ReadCloser) error {
 	var newUser dto.SignUpDTO
 	if err := util.Receive(body, &newUser); err != nil {
-		return 0, err
+		return err
 	}
 
 	if newUser.Username == "" || newUser.Password == "" || newUser.Fullname == "" {
-		return 0, errors.New("Invalid data")
+		return errors.New("Invalid data")
 	}
 
-	hashedPassword, err := hashPassword(newUser.Password)
+	// reduce string to base 64 to avoid dealing with unicode
+	reducedPass := base64.StdEncoding.EncodeToString([]byte(newUser.Password))
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(reducedPass), 0)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	row := r.db.QueryRowContext(ctx,
-		"INSERT INTO users(fullname, username, password) VALUES ($1, $2, $3) RETURNING id",
-		newUser.Fullname, newUser.Username, hashedPassword)
-
-	if err := row.Err(); err != nil {
-		return 0, err
+	if _, err := r.db.ExecContext(ctx,
+		"INSERT INTO users(id, fullname, username, password) VALUES ($1, $2, $3, $4)",
+		uuid.New(), newUser.Fullname, newUser.Username, string(hashedPass)); err != nil {
+		return err
 	}
 
-	var res uint64
-	if err := row.Scan(&res); err != nil {
-		return 0, err
-	}
-
-	return res, nil
-}
-
-func hashPassword(password string) (string, error) {
-	reducedString := base64.StdEncoding.EncodeToString([]byte(password))
-	hashedString, err := bcrypt.GenerateFromPassword([]byte(reducedString), 0)
-	if err != nil {
-		return "", err
-	}
-	return string(hashedString), nil
+	return nil
 }

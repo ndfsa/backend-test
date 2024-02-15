@@ -15,17 +15,14 @@ import (
 func CreateServiceRoutes(db *sql.DB, baseUrl string, key string) {
 	repo := repository.NewServicesRepository(db)
 
-	http.Handle(baseUrl+"/service", middleware.Chain(
+	http.Handle("GET "+baseUrl+"/service", middleware.Chain(
 		middleware.Logger,
-		middleware.Method(http.MethodGet),
 		middleware.Auth(key))(get(repo)))
-	http.Handle(baseUrl+"/service/create", middleware.Chain(
+	http.Handle("POST "+baseUrl+"/service/create", middleware.Chain(
 		middleware.Logger,
-		middleware.Method(http.MethodPost),
 		middleware.Auth(key))(create(repo)))
-	http.Handle(baseUrl+"/service/cancel", middleware.Chain(
+	http.Handle("DELETE "+baseUrl+"/service/cancel", middleware.Chain(
 		middleware.Logger,
-		middleware.Method(http.MethodDelete),
 		middleware.Auth(key))(cancel(repo)))
 }
 
@@ -40,7 +37,7 @@ func get(repo repository.ServicesRepository) http.HandlerFunc {
 			// if no service ID is found in query, return all services
 			services, err := repo.GetAll(r.Context(), userId)
 			if err != nil {
-				util.Error(&w, http.StatusInternalServerError, err.Error())
+				util.SendError(&w, http.StatusInternalServerError, err.Error())
 				return
 			}
 
@@ -49,14 +46,14 @@ func get(repo repository.ServicesRepository) http.HandlerFunc {
 		}
 		serviceId, err := strconv.ParseUint(serviceIdQuery, 10, 64)
 		if err != nil {
-			util.Error(&w, http.StatusBadRequest, err.Error())
+			util.SendError(&w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		// get all user services
 		services, err := repo.Get(r.Context(), userId, serviceId)
 		if err != nil {
-			util.Error(&w, http.StatusNoContent, err.Error())
+			util.SendError(&w, http.StatusNoContent, err.Error())
 			return
 		}
 
@@ -76,7 +73,7 @@ func create(repo repository.ServicesRepository) http.HandlerFunc {
 		// call repository
 		serviceId, err := repo.Create(r.Context(), userId, service)
 		if err != nil {
-			util.Error(&w, http.StatusInternalServerError, err.Error())
+			util.SendError(&w, http.StatusInternalServerError, err.Error())
 		}
 
 		// return service ID
@@ -92,16 +89,16 @@ func cancel(repo repository.ServicesRepository) http.HandlerFunc {
 		serviceIdQuery := r.URL.Query().Get("id")
 		if serviceIdQuery == "" {
 			// if no service ID is found in query, return all services
-			util.Error(&w, http.StatusBadRequest, "no service id")
+			util.SendError(&w, http.StatusBadRequest, "no service id")
 			return
 		}
 		serviceId, err := strconv.ParseUint(serviceIdQuery, 10, 64)
 		if err != nil {
-			util.Error(&w, http.StatusBadRequest, err.Error())
+			util.SendError(&w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if err := repo.Cancel(r.Context(), userId, serviceId); err != nil {
-			util.Error(&w, http.StatusInternalServerError, err.Error())
+			util.SendError(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}

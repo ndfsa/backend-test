@@ -4,16 +4,23 @@ networks:
   bank_net:
 
 services:
-  postgres:
-    image: postgres:alpine
-    container_name: postgres-db
+  db:
+    build:
+      context: .
+      target: database
     networks:
       - bank_net
     restart: always
-    environment:
-      POSTGRES_PASSWORD: toor
-    volumes:
-      - .build/.data/:/var/lib/postgresql/data
+    # volumes:
+    #   - .data/:/var/lib/postgresql/data
     ports:
       - 5432:5432
-
+  auth:
+    build:
+      context: .
+      target: authProd
+    networks:
+      - bank_net
+    restart: always
+    ports:
+      - 4001:3000

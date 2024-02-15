@@ -1,29 +1,26 @@
 DROP TABLE IF EXISTS user_service CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
-    id BIGSERIAL,
+    id UUID,
     fullname VARCHAR(300) NOT NULL,
     username VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(60) NOT NULL,
     PRIMARY KEY (id)
 );
 
-DROP TYPE CURR CASCADE;
+DROP TYPE IF EXISTS CURRENCY CASCADE;
 -- USD United States Dollar
 -- CAD Canadian Dollar
 -- JPY Japanese Yen
 -- NOK Norwegian crown
-CREATE TYPE CURR AS ENUM ('USD', 'CAD', 'JPY', 'NOK');
+CREATE TYPE CURRENCY AS ENUM ('USD', 'CAD', 'JPY', 'NOK');
 
-DROP TYPE SERVICE_TYPE CASCADE;
+DROP TYPE IF EXISTS SERVICE_TYPE CASCADE;
 -- SVA Savings account
 -- CQA Checking account
--- LON Loan
--- FTD Fixed time deposit
--- PFO Portfolio management
-CREATE TYPE SERVICE_TYPE AS ENUM ('SVA', 'CQA', 'LON', 'FTD', 'PFO');
+CREATE TYPE SERVICE_TYPE AS ENUM ('SVA', 'CQA');
 
-DROP TYPE SERVICE_STATE CASCADE;
+DROP TYPE IF EXISTS SERVICE_STATE CASCADE;
 -- REQ Requested service
 -- ACT Active service
 -- FRZ Frozen service
@@ -32,58 +29,62 @@ CREATE TYPE SERVICE_STATE AS ENUM ('REQ', 'ACT', 'FRZ', 'CLD');
 
 DROP TABLE IF EXISTS services CASCADE;
 CREATE TABLE services (
-    id BIGSERIAL,
+    id UUID,
     type SERVICE_TYPE,
     state SERVICE_STATE,
-    currency CURR,
-    init_balance NUMERIC(20, 2),
+    currency CURRENCY,
     balance NUMERIC(20, 2),
     PRIMARY KEY (id)
 );
 
-DROP TYPE TRANSACTION_STATE CASCADE;
--- INIT Initial state
--- PROC Under investigation
--- INV Under investigation
--- ERR Error processing
+DROP TYPE IF EXISTS TRANSACTION_STATE CASCADE;
+-- INITIAL Initial state
+-- PROCESSING Processing transaction
+-- INVESTIGATION Under investigation
+-- ERROR Error processing
 -- DONE Transaction processed
--- CLD Cancelled transaction
--- RLBK Rolled back transaction
-CREATE TYPE TRANSACTION_STATE AS ENUM ('INIT', 'PROC', 'INV', 'ERR', 'DONE', 'CLD', 'RLBK');
+-- CANCELLED Cancelled transaction
+-- ROLLBACK Rolled back transaction
+CREATE TYPE TRANSACTION_STATE AS ENUM (
+    'INITIAL',
+    'PROCESSING',
+    'INVESTIGATION',
+    'ERROR',
+    'DONE',
+    'CANCELLED',
+    'ROLLBACK'
+);
 
 DROP TABLE IF EXISTS transactions CASCADE;
 CREATE TABLE transactions (
-    id BIGSERIAL,
+    id UUID,
     state SMALLINT,
-    currency CURR,
+    currency CURRENCY,
     amount NUMERIC(20, 2),
     PRIMARY KEY (id)
 );
 
 CREATE TABLE user_service (
-    user_id BIGINT,
-    service_id BIGINT,
+    user_id UUID,
+    service_id UUID,
     PRIMARY KEY (user_id, service_id),
     FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services ON DELETE CASCADE
 );
 
--- transactions from world or to world, are represented as from NULL or to NULL respectively
+-- transactions to or from the outside, are represented as from NULL or to NULL respectively
 DROP TABLE IF EXISTS service_transaction CASCADE;
 CREATE TABLE service_transaction (
-    transaction_id BIGINT,
-    from_service_id BIGINT,
-    to_service_id BIGINT,
-    user_id BIGINT,
+    transaction_id UUID,
+    from_service_id UUID,
+    to_service_id UUID,
+    user_id UUID,
     FOREIGN KEY (transaction_id) REFERENCES transactions ON DELETE CASCADE,
     FOREIGN KEY (from_service_id) REFERENCES services ON DELETE CASCADE,
     FOREIGN KEY (to_service_id) REFERENCES services ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE
 );
 
--- create root user with default password
-INSERT INTO users (fullname, username, password) VALUES (
-    'root user',
-    'root',
-    '$2a$10$5biVnhUF8E2WDrYCvNynruHh2LbBnw6EUP14R.QVn8Oadixe/4rO2'
-);
+CREATE USER back WITH PASSWORD 'root';
+GRANT ALL PRIVILEGES ON DATABASE cardboard_bank TO back;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO back;

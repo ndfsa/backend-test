@@ -22,7 +22,7 @@ func main() {
 	defer db.Close()
 
 	CreateUserRoutes(db, baseUrl, tokenKey)
-	CreateServiceRoutes(db, baseUrl, tokenKey)
+	// CreateServiceRoutes(db, baseUrl, tokenKey)
 
 	if err = http.ListenAndServe(":4000", nil); err != nil {
 		log.Fatal(err)

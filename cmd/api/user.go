@@ -13,20 +13,20 @@ import (
 func CreateUserRoutes(db *sql.DB, baseUrl string, key string) {
 	repo := repository.NewUsersRepository(db)
 
-	http.Handle(baseUrl+"/user", middleware.Chain(
-		middleware.Logger,
-		middleware.Method(http.MethodGet),
-		middleware.Auth(key))(getUserHandler(repo)))
+	http.Handle("GET "+baseUrl+"/user",
+		middleware.Chain(
+			middleware.Logger,
+			middleware.Auth(key))(getUserHandler(repo)))
 
-	http.Handle(baseUrl+"/user/update", middleware.Chain(
-		middleware.Logger,
-		middleware.Method(http.MethodPut),
-		middleware.Auth(key))(updateUserHandler(repo)))
+	http.Handle("PUT "+baseUrl+"/user/update",
+		middleware.Chain(
+			middleware.Logger,
+			middleware.Auth(key))(updateUserHandler(repo)))
 
-	http.Handle(baseUrl+"/user/delete", middleware.Chain(
-		middleware.Logger,
-		middleware.Method(http.MethodDelete),
-		middleware.Auth(key))(deleteUserHandler(repo)))
+	http.Handle("DELETE "+baseUrl+"/user/delete",
+		middleware.Chain(
+			middleware.Logger,
+			middleware.Auth(key))(deleteUserHandler(repo)))
 }
 
 func getUserHandler(repo repository.UsersRepository) http.Handler {
@@ -37,7 +37,7 @@ func getUserHandler(repo repository.UsersRepository) http.Handler {
 		// get user from database
 		user, err := repo.Get(r.Context(), userId)
 		if err != nil {
-			util.Error(&w, http.StatusInternalServerError, err.Error())
+			util.SendError(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -52,7 +52,7 @@ func updateUserHandler(repo repository.UsersRepository) http.Handler {
 		userId, _ := token.GetUserId(r)
 
 		if err := repo.Update(r.Context(), r.Body, userId); err != nil {
-			util.Error(&w, http.StatusInternalServerError, err.Error())
+			util.SendError(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	})
@@ -65,7 +65,7 @@ func deleteUserHandler(repo repository.UsersRepository) http.Handler {
 
 		// delete user from database
 		if err := repo.Delete(r.Context(), userId); err != nil {
-			util.Error(&w, http.StatusInternalServerError, err.Error())
+			util.SendError(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	})

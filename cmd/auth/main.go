@@ -2,12 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ndfsa/backend-test/cmd/auth/dto"
 	"github.com/ndfsa/backend-test/cmd/auth/repository"
@@ -17,109 +14,86 @@ import (
 )
 
 const (
-	tokenKey = "test-application"
-	baseUrl   = "/api/v1"
+    // 32-byte key
+	tokenKey = "2bbb515c1311dd69a609a0d553dc7ac1ac8eadc2b22daa9aaa99483d2f381374"
 )
 
 func main() {
 	// connect to database
-	db, err := sql.Open("pgx", "postgres://back:root@localhost:5432/cardboard_bank")
+	db, err := sql.Open("pgx", "postgres://back:root@db:5432/cardboard_bank")
 	if err != nil {
 		log.Fatalf("unable to connect to database: %v\n", err)
 	}
 	defer db.Close()
 
+    log.Println(tokenKey)
+
 	repo := repository.NewAuthRepository(db)
 
 	// setup routes
-	http.Handle(baseUrl+"/auth", middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000))(auth(repo)))
-	http.Handle(baseUrl+"/auth/signup", middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000))(signUpHandler(repo)))
-	http.Handle(baseUrl+"/auth/refresh", middleware.Chain(
-		middleware.Logger,
-		middleware.Auth(tokenKey),
-		middleware.UploadLimit(1000))(signUpHandler(repo)))
+	http.Handle("POST /auth", middleware.Basic(authorizeUser(repo)))
+	http.Handle("POST /auth/signup", middleware.Basic(signUp(repo)))
+	http.Handle("POST /auth/refresh", middleware.Basic(refreshToken(repo)))
 
 	// start server
-	if err := http.ListenAndServe(":4001", nil); err != nil {
+	if err := http.ListenAndServe(":3000", nil); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func generateJWT(userId uint64) (string, error) {
-	claims := token.AccessTokenClaims{
-		User: userId,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    "test",
-			Subject:   "somebody",
-			ID:        "1",
-			Audience:  []string{"somebody_else"},
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	tokenString, err := token.SignedString([]byte(tokenKey))
-	if err != nil {
-		return "", err
-	}
-
-	// TODO: add refresh token to avoid re-authentication
-
-	return tokenString, nil
-}
-
-func auth(repo repository.AuthRepository) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func authorizeUser(repo repository.AuthRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var user dto.AuthUserDTO
 		if err := util.Receive(r.Body, &user); err != nil {
-			util.Error(&w, http.StatusBadRequest, err.Error())
+			util.SendError(&w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		if user.Username == "" || user.Password == "" {
-			util.Error(&w, http.StatusBadRequest, "missing credentials")
+			util.SendError(&w, http.StatusBadRequest, "missing credentials")
 			return
 		}
 
 		userId, err := repo.AuthenticateUser(r.Context(), user.Username, user.Password)
 		if err != nil {
-			util.Error(&w, http.StatusUnauthorized, err.Error())
+			util.SendError(&w, http.StatusUnauthorized, err.Error())
 			return
 		}
 
-		tokenString, err := generateJWT(userId)
+		accessTokenString, err := token.GenerateAccessToken(userId, tokenKey)
 		if err != nil {
-			util.Error(&w, http.StatusUnauthorized, err.Error())
+			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			return
+		}
+		refreshTokenString, err := token.GenerateRefreshToken(userId, tokenKey)
+		if err != nil {
+			util.SendError(&w, http.StatusUnauthorized, err.Error())
 			return
 		}
 
-		util.Send(&w, dto.TokenDTO{Token: tokenString})
-	})
+		util.Send(&w, dto.TokenDTO{
+			AccessToken:  accessTokenString,
+			RefreshToken: refreshTokenString,
+		})
+	}
 }
 
-func signUpHandler(repo repository.AuthRepository) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userId, err := repo.SignUp(r.Context(), r.Body)
+func signUp(repo repository.AuthRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := repo.CreateUser(r.Context(), r.Body)
 		if err != nil {
-			util.Error(&w, http.StatusInternalServerError, err.Error())
+			util.SendError(&w, http.StatusInternalServerError, err.Error())
 			return
 		}
-
-		fmt.Fprint(w, userId)
-	})
+	}
 }
 
-func refreshToken() {
-	// validate tokens
+func refreshToken(repository.AuthRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// validate tokens
 
-	// generate new tokens
+		// generate new tokens
 
-	// send new tokens
+		// send new tokens
+	}
 }

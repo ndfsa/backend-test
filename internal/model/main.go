@@ -1,15 +1,18 @@
 package model
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
+)
 
 type User struct {
-	UserId   uint64 `json:"id"`
-	Fullname string `json:"fullname"`
-	Username string `json:"username"`
+	UserId   uuid.UUID `json:"id"`
+	Fullname string    `json:"fullname"`
+	Username string    `json:"username"`
 }
 
 type Service struct {
-	Id          uint64          `json:"id"`
+	Id          uuid.UUID       `json:"id"`
 	Type        string          `json:"type"`
 	State       string          `json:"state"`
 	Currency    string          `json:"currency"`

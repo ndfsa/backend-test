@@ -1,131 +1,88 @@
 package token
 
 import (
-	"errors"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"aidanwoods.dev/go-paseto"
+	"github.com/google/uuid"
 )
 
-type AccessTokenClaims struct {
-	User uint64 `json:"user"`
-	jwt.RegisteredClaims
-}
+const (
+	USER_ID_KEY      = "userId"
+	ACCESS_DURATION  = 15 * time.Minute
+	REFRESH_DURATION = 30 * 24 * time.Hour
+)
 
-type RefreshTokenClaims struct {
-	User    uint64 `json:"user"`
-	Refresh bool   `json:"refresh"`
-	jwt.RegisteredClaims
-}
-
-func GetUserId(r *http.Request) (uint64, error) {
-	bearerToken := r.Header.Get("Authorization")
-	tokenString := strings.Split(bearerToken, " ")[1]
-	token, _, err := jwt.NewParser().ParseUnverified(tokenString, &AccessTokenClaims{})
+func GetUserId(encodedToken string, hexKey string) (uuid.UUID, error) {
+	parser := paseto.NewParserWithoutExpiryCheck()
+	key, err := paseto.V4SymmetricKeyFromHex(hexKey)
 	if err != nil {
-		return 0, err
+		return uuid.UUID{}, err
 	}
-	claims, ok := token.Claims.(*AccessTokenClaims)
-	if !ok {
-		return 0, errors.New("failed casting claims")
-	}
-	return claims.User, nil
-}
 
-func GetUserIdRef(r *http.Request) (uint64, error) {
-	bearerToken := r.Header.Get("Authorization")
-	tokenString := strings.Split(bearerToken, " ")[1]
-	token, _, err := jwt.NewParser().ParseUnverified(tokenString, &RefreshTokenClaims{})
+    token, err := parser.ParseV4Local(key, encodedToken, nil)
 	if err != nil {
-		return 0, err
+		return uuid.UUID{}, err
 	}
-	claims, ok := token.Claims.(*RefreshTokenClaims)
-	if !ok {
-		return 0, errors.New("failed casting claims")
-	}
-	return claims.User, nil
+
+    encodedId, err := token.GetString(USER_ID_KEY)
+    if err != nil {
+        return uuid.UUID{}, err
+    }
+
+    id, err := uuid.Parse(encodedId)
+    if err != nil {
+        return uuid.UUID{}, err
+    }
+
+	return id, nil
 }
 
-func ValidateAccessToken(r *http.Request, key string) error {
-	tokenString, err := ValidateToken(r)
+func ValidateAccessToken(encodedToken string, hexKey string) error {
+	parser := paseto.NewParserForValidNow()
+
+	key, err := paseto.V4SymmetricKeyFromHex(hexKey)
 	if err != nil {
 		return err
 	}
 
-	token, err := jwt.ParseWithClaims(tokenString,
-		&AccessTokenClaims{},
-		func(token *jwt.Token) (interface{}, error) {
-			return []byte(key), nil
-		},
-		jwt.WithLeeway(1*time.Second),
-		jwt.WithValidMethods([]string{"RS256", "HS256"}))
+	_, err = parser.ParseV4Local(key, encodedToken, nil)
 	if err != nil {
 		return err
 	}
-	if !token.Valid {
-		return errors.New("invalid jwt token")
-	}
-
-	claims, ok := token.Claims.(*AccessTokenClaims)
-	if !ok {
-		return errors.New("invalid jwt claims")
-	}
-	if claims.User == 0 {
-		return errors.New("invalid user")
-	}
-
 	return nil
 }
 
-func ValidateRefreshToken(r *http.Request) error {
-	tokenString, err := ValidateToken(r)
-	if err != nil {
-		return err
-	}
-
-	token, err := jwt.ParseWithClaims(tokenString,
-		&RefreshTokenClaims{},
-		func(token *jwt.Token) (interface{}, error) {
-			return []byte("refresh-test-application"), nil
-		},
-		jwt.WithLeeway(5*time.Second),
-		jwt.WithValidMethods([]string{"RS256", "HS256"}))
-	if err != nil {
-		return err
-	}
-	if !token.Valid {
-		return errors.New("invalid jwt token")
-	}
-
-	claims, ok := token.Claims.(*RefreshTokenClaims)
-	if !ok {
-		return errors.New("invalid jwt claims")
-	}
-	if claims.User == 0 {
-		return errors.New("invalid user")
-	}
-	if !claims.Refresh {
-		return errors.New("not a refresh token")
-	}
-
+func ValidateRefreshToken(encodedToken, hexKey string) error {
 	return nil
 }
 
-func ValidateToken(r *http.Request) (string, error) {
-	header := r.Header.Get("Authorization")
-	// cleanup empty header
-	tokenString := strings.TrimSpace(header)
-	if tokenString == "" {
-		return "", errors.New("bearer token not found")
+func generateToken(userId uuid.UUID, tokenKey string, duration time.Duration) (string, error) {
+	token := paseto.NewToken()
+
+	token.SetIssuedAt(time.Now())
+	token.SetNotBefore(time.Now())
+	token.SetExpiration(time.Now().Add(duration))
+
+	token.SetString(USER_ID_KEY, userId.String())
+
+	key, err := paseto.V4SymmetricKeyFromHex(tokenKey)
+	if err != nil {
+		return "", err
 	}
 
-	// separate bearer token, which comes in the form: "Bearer <token>"
-	bearerToken := strings.Split(tokenString, " ")
-	if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
-		return "", errors.New("invalid bearer token")
-	}
+	return token.V4Encrypt(key, nil), nil
+}
 
-	return bearerToken[1], nil
+func GenerateAccessToken(userId uuid.UUID, tokenKey string) (string, error) {
+	return generateToken(userId, tokenKey, ACCESS_DURATION)
+}
+
+func GenerateRefreshToken(userId uuid.UUID, tokenKey string) (string, error) {
+	return generateToken(userId, tokenKey, REFRESH_DURATION)
+}
+
+func ValidateToken(r *http.Request) error {
+	return nil
 }
