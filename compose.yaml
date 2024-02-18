@@ -11,10 +11,6 @@ services:
     networks:
       - bank_net
     restart: always
-    # volumes:
-    #   - .data/:/var/lib/postgresql/data
-    ports:
-      - 5432:5432
   auth:
     build:
       context: .
@@ -23,4 +19,4 @@ services:
       - bank_net
     restart: always
     ports:
-      - 4001:3000
+      - 4001:80

@@ -5,11 +5,9 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
-	"io"
 
 	"github.com/google/uuid"
-	"github.com/ndfsa/backend-test/cmd/auth/dto"
-	"github.com/ndfsa/backend-test/internal/util"
+	"github.com/ndfsa/cardboard-bank/cmd/auth/dto"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -52,12 +50,7 @@ func (r *AuthRepository) AuthenticateUser(
 	return id, nil
 }
 
-func (r *AuthRepository) CreateUser(ctx context.Context, body io.ReadCloser) error {
-	var newUser dto.SignUpDTO
-	if err := util.Receive(body, &newUser); err != nil {
-		return err
-	}
-
+func (r *AuthRepository) CreateUser(ctx context.Context, newUser dto.SignUpDTO) error {
 	if newUser.Username == "" || newUser.Password == "" || newUser.Fullname == "" {
 		return errors.New("Invalid data")
 	}

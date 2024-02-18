@@ -1,71 +1,79 @@
 package main
 
 import (
-	"database/sql"
+	"log"
 	"net/http"
 
-	"github.com/ndfsa/backend-test/cmd/api/repository"
-	"github.com/ndfsa/backend-test/internal/middleware"
-	"github.com/ndfsa/backend-test/internal/token"
-	"github.com/ndfsa/backend-test/internal/util"
+	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
+	"github.com/ndfsa/cardboard-bank/cmd/api/repository"
+	"github.com/ndfsa/cardboard-bank/internal/encoding"
+	"github.com/ndfsa/cardboard-bank/internal/token"
 )
 
-func CreateUserRoutes(db *sql.DB, baseUrl string, key string) {
-	repo := repository.NewUsersRepository(db)
-
-	http.Handle("GET "+baseUrl+"/user",
-		middleware.Chain(
-			middleware.Logger,
-			middleware.Auth(key))(getUserHandler(repo)))
-
-	http.Handle("PUT "+baseUrl+"/user/update",
-		middleware.Chain(
-			middleware.Logger,
-			middleware.Auth(key))(updateUserHandler(repo)))
-
-	http.Handle("DELETE "+baseUrl+"/user/delete",
-		middleware.Chain(
-			middleware.Logger,
-			middleware.Auth(key))(deleteUserHandler(repo)))
-}
-
-func getUserHandler(repo repository.UsersRepository) http.Handler {
+func getUser(repo repository.UsersRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// open jwt to retrieve userId
-		userId, _ := token.GetUserId(r)
+		encodedToken := r.Header.Get("Authorization")
+
+		userId, err := token.GetUserId(encodedToken, tokenKey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+			return
+		}
 
 		// get user from database
 		user, err := repo.Get(r.Context(), userId)
 		if err != nil {
-			util.SendError(&w, http.StatusInternalServerError, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
 			return
 		}
 
 		// write user to response
-		util.Send(&w, user)
+		encoding.Send(w, user)
 	})
 }
 
-func updateUserHandler(repo repository.UsersRepository) http.Handler {
+func updateUser(repo repository.UsersRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// open jwt to retrieve userId
-		userId, _ := token.GetUserId(r)
+		encodedToken := r.Header.Get("Authorization")
 
-		if err := repo.Update(r.Context(), r.Body, userId); err != nil {
-			util.SendError(&w, http.StatusInternalServerError, err.Error())
+		userId, err := token.GetUserId(encodedToken, tokenKey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+			return
+		}
+		var user dto.UserDto
+		if err := encoding.Receive(r, &user); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
+
+		if err := repo.Update(r.Context(), user, userId); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
 			return
 		}
 	})
 }
 
-func deleteUserHandler(repo repository.UsersRepository) http.Handler {
+func deleteUser(repo repository.UsersRepository) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// open jwt to retrieve userId
-		userId, _ := token.GetUserId(r)
+		encodedToken := r.Header.Get("Authorization")
+
+		userId, err := token.GetUserId(encodedToken, tokenKey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+			return
+		}
 
 		// delete user from database
 		if err := repo.Delete(r.Context(), userId); err != nil {
-			util.SendError(&w, http.StatusInternalServerError, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
 			return
 		}
 	})

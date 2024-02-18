@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/ndfsa/backend-test/cmd/api/dto"
+	"github.com/google/uuid"
+	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
 )
 
 type TransactionsRepository struct {
@@ -18,7 +19,7 @@ func NewTransactionsRepository(db *sql.DB) TransactionsRepository {
 
 func (r *TransactionsRepository) Execute(
 	ctx context.Context,
-	userId uint64,
+	userId uuid.UUID,
 	transaction dto.TransactionDto) error {
 
 	// check if user owns source service
@@ -82,14 +83,14 @@ func (r *TransactionsRepository) Execute(
 	return nil
 }
 
-func (r *TransactionsRepository) Get(userId uint64, transactionId uint64) error {
+func (r *TransactionsRepository) Get(userId uuid.UUID, transactionId uuid.UUID) error {
 	return nil
 }
 
-func (r *TransactionsRepository) GetAll(userId uint64) error {
+func (r *TransactionsRepository) GetAll(userId uuid.UUID) error {
 	return nil
 }
 
-func (r *TransactionsRepository) Rollback(userId uint64, transactionId uint64) error {
+func (r *TransactionsRepository) Rollback(userId uuid.UUID, transactionId uuid.UUID) error {
 	return nil
 }

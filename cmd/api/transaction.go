@@ -2,53 +2,52 @@ package main
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
-	"strconv"
 
-	"github.com/ndfsa/backend-test/cmd/api/dto"
-	"github.com/ndfsa/backend-test/cmd/api/repository"
-	"github.com/ndfsa/backend-test/internal/middleware"
-	"github.com/ndfsa/backend-test/internal/token"
-	"github.com/ndfsa/backend-test/internal/util"
+	"github.com/google/uuid"
+	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
+	"github.com/ndfsa/cardboard-bank/cmd/api/repository"
+	"github.com/ndfsa/cardboard-bank/internal/encoding"
+	"github.com/ndfsa/cardboard-bank/internal/token"
 )
 
-func CreateTransactionRoutes(db *sql.DB, baseUrl string, key string) {
-	repo := repository.NewTransactionsRepository(db)
-
-	http.Handle("GET "+baseUrl+"/transaction", middleware.Chain(
-		middleware.Logger,
-		middleware.Auth(key))(getTransaction(repo)))
-	http.Handle("POST "+baseUrl+"/transaction/execute", middleware.Chain(
-		middleware.Logger,
-		middleware.Auth(key))(executeTransaction(repo)))
-	http.Handle("DELETE "+baseUrl+"/transaction/rollback", middleware.Chain(
-		middleware.Logger,
-		middleware.Auth(key))(rollbackTransaction(repo)))
+func CreateTransactionRoutes(db *sql.DB, baseUrl string, tokenKey string) {
 }
 
 func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userId, _ := token.GetUserId(r)
+		encodedToken := r.Header.Get("Authorization")
+
+		userId, err := token.GetUserId(encodedToken, tokenKey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+		}
+
 		transactionIdString := r.URL.Query().Get("id")
 
-		if len(transactionIdString) == 0 {
+		if transactionIdString == "" {
 			err := repo.GetAll(userId)
 			if err != nil {
-				util.SendError(&w, http.StatusInternalServerError, err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err.Error())
 				return
 			}
 			// return transaction list
 		}
 
-		transactionId, err := strconv.ParseUint(transactionIdString, 10, 64)
+		transactionId, err := uuid.Parse(transactionIdString)
 		if err != nil {
-			util.SendError(&w, http.StatusInternalServerError, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err.Error())
 			return
 		}
 
 		err = repo.Get(userId, transactionId)
 		if err != nil {
-			util.SendError(&w, http.StatusInternalServerError, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err.Error())
 			return
 		}
 
@@ -58,16 +57,25 @@ func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 
 func executeTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userId, _ := token.GetUserId(r)
+		encodedToken := r.Header.Get("Authorization")
+
+		userId, err := token.GetUserId(encodedToken, tokenKey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+			return
+		}
 
 		var transaction dto.TransactionDto
-		if err := util.Receive(r.Body, &transaction); err != nil {
-			util.SendError(&w, http.StatusBadRequest, err.Error())
+		if err := encoding.Receive(r, &transaction); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err.Error())
 			return
 		}
 
 		if err := repo.Execute(r.Context(), userId, transaction); err != nil {
-			util.SendError(&w, http.StatusInternalServerError, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err.Error())
 			return
 		}
 	})
@@ -75,8 +83,9 @@ func executeTransaction(repo repository.TransactionsRepository) http.HandlerFunc
 
 func rollbackTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := repo.Rollback(0, 0); err != nil {
-			util.SendError(&w, http.StatusBadRequest, err.Error())
+		if err := repo.Rollback(uuid.UUID{}, uuid.UUID{}); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err.Error())
 			return
 		}
 	})

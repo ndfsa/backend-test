@@ -1,4 +1,4 @@
-module github.com/ndfsa/backend-test
+module github.com/ndfsa/cardboard-bank
 
 go 1.22.0
 

@@ -2,13 +2,12 @@ package repository
 
 import (
 	"database/sql"
-	"errors"
-	"io"
 
 	"context"
-	"github.com/ndfsa/backend-test/cmd/api/dto"
-	"github.com/ndfsa/backend-test/internal/model"
-	"github.com/ndfsa/backend-test/internal/util"
+
+	"github.com/google/uuid"
+	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
+	"github.com/ndfsa/cardboard-bank/internal/model"
 )
 
 type UsersRepository struct {
@@ -19,7 +18,7 @@ func NewUsersRepository(db *sql.DB) UsersRepository {
 	return UsersRepository{db}
 }
 
-func (r *UsersRepository) Get(ctx context.Context, userId uint64) (model.User, error) {
+func (r *UsersRepository) Get(ctx context.Context, userId uuid.UUID) (model.User, error) {
 	var user model.User
 
 	row := r.db.QueryRowContext(ctx,
@@ -35,13 +34,7 @@ func (r *UsersRepository) Get(ctx context.Context, userId uint64) (model.User, e
 	return user, nil
 }
 
-func (r *UsersRepository) Update(ctx context.Context, body io.ReadCloser, userId uint64) error {
-	var user dto.UserDto
-	err := util.Receive(body, &user)
-	if err != nil {
-		return err
-	}
-
+func (r *UsersRepository) Update(ctx context.Context, user dto.UserDto, userId uuid.UUID) error {
 	if _, err := r.db.ExecContext(ctx, "UPDATE users SET fullname = $1, username = $2 WHERE id = $3",
 		user.Fullname, user.Username, userId); err != nil {
 		return err
@@ -50,11 +43,7 @@ func (r *UsersRepository) Update(ctx context.Context, body io.ReadCloser, userId
 	return nil
 }
 
-func (r *UsersRepository) Delete(ctx context.Context, userId uint64) error {
-	if userId == 1 {
-		return errors.New("cannot delete root user")
-	}
-
+func (r *UsersRepository) Delete(ctx context.Context, userId uuid.UUID) error {
 	if _, err := r.db.ExecContext(ctx, "DELETE FROM users WHERE id = $1", userId); err != nil {
 		return err
 	}

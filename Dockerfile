@@ -39,6 +39,6 @@ FROM alpine as authProd
 
 COPY --from=build /bin/auth /bin/auth
 
-EXPOSE 3000
+EXPOSE 80
 
 CMD ["auth"]

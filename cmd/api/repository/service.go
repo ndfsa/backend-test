@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/ndfsa/backend-test/cmd/api/dto"
-	"github.com/ndfsa/backend-test/internal/model"
+	"github.com/google/uuid"
+	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
+	"github.com/ndfsa/cardboard-bank/internal/model"
 )
 
 type ServicesRepository struct {
@@ -18,7 +19,7 @@ func NewServicesRepository(db *sql.DB) ServicesRepository {
 
 func (r *ServicesRepository) GetAll(
 	ctx context.Context,
-	userId uint64) ([]model.Service, error) {
+	userId uuid.UUID) ([]model.Service, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
         FROM users u
@@ -55,7 +56,7 @@ func (r *ServicesRepository) GetAll(
 
 func (r *ServicesRepository) Get(
 	ctx context.Context,
-	userId uint64,
+	userId uuid.UUID,
 	serviceId uint64) (model.Service, error) {
 
 	rows := r.db.QueryRowContext(ctx,
@@ -86,7 +87,7 @@ func (r *ServicesRepository) Get(
 
 func (r *ServicesRepository) Create(
 	ctx context.Context,
-	userId uint64,
+	userId uuid.UUID,
 	service dto.ServiceDto) (uint64, error) {
 
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -128,7 +129,7 @@ func (r *ServicesRepository) Create(
 
 func (r *ServicesRepository) Cancel(
 	ctx context.Context,
-	userId uint64,
+	userId uuid.UUID,
 	serviceId uint64) error {
 	if _, err := r.db.ExecContext(ctx, `UPDATE services SET state = 'CLD'
         FROM users JOIN user_service ON users.id = user_id

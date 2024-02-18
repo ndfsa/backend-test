@@ -6,11 +6,11 @@ import (
 	"net/http"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/ndfsa/backend-test/cmd/auth/dto"
-	"github.com/ndfsa/backend-test/cmd/auth/repository"
-	"github.com/ndfsa/backend-test/internal/middleware"
-	"github.com/ndfsa/backend-test/internal/token"
-	"github.com/ndfsa/backend-test/internal/util"
+	"github.com/ndfsa/cardboard-bank/cmd/auth/dto"
+	"github.com/ndfsa/cardboard-bank/cmd/auth/repository"
+	"github.com/ndfsa/cardboard-bank/internal/encoding"
+	"github.com/ndfsa/cardboard-bank/internal/middleware"
+	"github.com/ndfsa/cardboard-bank/internal/token"
 )
 
 const (
@@ -32,11 +32,11 @@ func main() {
 
 	// setup routes
 	http.Handle("POST /auth", middleware.Basic(authorizeUser(repo)))
+	http.Handle("GET /auth", middleware.Basic(refreshToken(repo)))
 	http.Handle("POST /auth/signup", middleware.Basic(signUp(repo)))
-	http.Handle("GET /auth/refresh", middleware.Basic(refreshToken(repo)))
 
 	// start server
-	if err := http.ListenAndServe(":3000", nil); err != nil {
+	if err := http.ListenAndServe(":80", nil); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -44,34 +44,39 @@ func main() {
 func authorizeUser(repo repository.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var user dto.AuthUserDTO
-		if err := util.Receive(r.Body, &user); err != nil {
-			util.SendError(&w, http.StatusBadRequest, err.Error())
+		if err := encoding.Receive(r, &user); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
 			return
 		}
 
 		if user.Username == "" || user.Password == "" {
-			util.SendError(&w, http.StatusBadRequest, "missing credentials")
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println("missing credentials")
 			return
 		}
 
 		userId, err := repo.AuthenticateUser(r.Context(), user.Username, user.Password)
 		if err != nil {
-			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
 			return
 		}
 
 		accessTokenString, err := token.GenerateAccessToken(userId, tokenKey)
 		if err != nil {
-			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
 			return
 		}
 		refreshTokenString, err := token.GenerateRefreshToken(userId, tokenKey)
 		if err != nil {
-			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
 			return
 		}
 
-		util.Send(&w, dto.TokenDTO{
+		encoding.Send(w, dto.TokenDTO{
 			AccessToken:  accessTokenString,
 			RefreshToken: refreshTokenString,
 		})
@@ -80,9 +85,17 @@ func authorizeUser(repo repository.AuthRepository) http.HandlerFunc {
 
 func signUp(repo repository.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := repo.CreateUser(r.Context(), r.Body)
+		var newUser dto.SignUpDTO
+		if err := encoding.Receive(r, &newUser); err != nil {
+            w.WriteHeader(http.StatusInternalServerError)
+            log.Println(err)
+			return
+		}
+
+		err := repo.CreateUser(r.Context(), newUser)
 		if err != nil {
-			util.SendError(&w, http.StatusInternalServerError, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
 			return
 		}
 	}
@@ -92,28 +105,32 @@ func refreshToken(repo repository.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 		if err := token.ValidateAccessToken(encodedToken, tokenKey); err != nil {
-			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
 			return
 		}
 
-        userId, err := token.GetUserId(encodedToken, tokenKey)
-        if err != nil {
-			util.SendError(&w, http.StatusUnauthorized, err.Error())
-            return
-        }
+		userId, err := token.GetUserId(encodedToken, tokenKey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+			return
+		}
 
 		accessTokenString, err := token.GenerateAccessToken(userId, tokenKey)
 		if err != nil {
-			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
 			return
 		}
 		refreshTokenString, err := token.GenerateRefreshToken(userId, tokenKey)
 		if err != nil {
-			util.SendError(&w, http.StatusUnauthorized, err.Error())
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
 			return
 		}
 
-		util.Send(&w, dto.TokenDTO{
+		encoding.Send(w, dto.TokenDTO{
 			AccessToken:  accessTokenString,
 			RefreshToken: refreshTokenString,
 		})
