@@ -7,6 +7,7 @@ import (
 	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
 	"github.com/ndfsa/cardboard-bank/cmd/api/repository"
 	"github.com/ndfsa/cardboard-bank/internal/encoding"
+	"github.com/ndfsa/cardboard-bank/internal/model"
 	"github.com/ndfsa/cardboard-bank/internal/token"
 )
 
@@ -21,7 +22,6 @@ func getUser(repo repository.UsersRepository) http.Handler {
 			return
 		}
 
-		// get user from database
 		user, err := repo.Get(r.Context(), userId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -29,7 +29,6 @@ func getUser(repo repository.UsersRepository) http.Handler {
 			return
 		}
 
-		// write user to response
 		encoding.Send(w, user)
 	})
 }
@@ -44,14 +43,17 @@ func updateUser(repo repository.UsersRepository) http.Handler {
 			log.Println(err)
 			return
 		}
-		var user dto.UserDto
-		if err := encoding.Receive(r, &user); err != nil {
+		var userDto dto.UpdateUserRequest
+		if err := encoding.Receive(r, &userDto); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			log.Println(err)
 			return
 		}
 
-		if err := repo.Update(r.Context(), user, userId); err != nil {
+		if err := repo.Update(r.Context(), model.User{
+			Id:       userId,
+			Fullname: userDto.Fullname,
+			Username: userDto.Username}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return
@@ -70,7 +72,6 @@ func deleteUser(repo repository.UsersRepository) http.Handler {
 			return
 		}
 
-		// delete user from database
 		if err := repo.Delete(r.Context(), userId); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)

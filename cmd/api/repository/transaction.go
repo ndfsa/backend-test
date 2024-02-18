@@ -20,7 +20,7 @@ func NewTransactionsRepository(db *sql.DB) TransactionsRepository {
 func (r *TransactionsRepository) Execute(
 	ctx context.Context,
 	userId uuid.UUID,
-	transaction dto.TransactionDto) error {
+	transaction dto.ExecuteTransactionRequest) error {
 
 	// check if user owns source service
 	row := r.db.QueryRowContext(ctx, `SELECT EXISTS (

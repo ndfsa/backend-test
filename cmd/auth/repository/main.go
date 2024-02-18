@@ -50,7 +50,7 @@ func (r *AuthRepository) AuthenticateUser(
 	return id, nil
 }
 
-func (r *AuthRepository) CreateUser(ctx context.Context, newUser dto.SignUpDTO) error {
+func (r *AuthRepository) CreateUser(ctx context.Context, newUser dto.SignUpRequest) error {
 	if newUser.Username == "" || newUser.Password == "" || newUser.Fullname == "" {
 		return errors.New("Invalid data")
 	}

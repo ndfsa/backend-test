@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
 	"github.com/ndfsa/cardboard-bank/internal/model"
 )
 
@@ -27,16 +26,16 @@ func (r *UsersRepository) Get(ctx context.Context, userId uuid.UUID) (model.User
 		return user, err
 	}
 
-	if err := row.Scan(&user.UserId, &user.Fullname, &user.Username); err != nil {
+	if err := row.Scan(&user.Id, &user.Fullname, &user.Username); err != nil {
 		return user, err
 	}
 
 	return user, nil
 }
 
-func (r *UsersRepository) Update(ctx context.Context, user dto.UserDto, userId uuid.UUID) error {
+func (r *UsersRepository) Update(ctx context.Context, user model.User) error {
 	if _, err := r.db.ExecContext(ctx, "UPDATE users SET fullname = $1, username = $2 WHERE id = $3",
-		user.Fullname, user.Username, userId); err != nil {
+		user.Fullname, user.Username, user.Id); err != nil {
 		return err
 	}
 

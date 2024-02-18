@@ -26,8 +26,6 @@ func main() {
 	}
 	defer db.Close()
 
-	log.Println(tokenKey)
-
 	repo := repository.NewAuthRepository(db)
 
 	// setup routes
@@ -36,6 +34,7 @@ func main() {
 	http.Handle("POST /auth/signup", middleware.Basic(signUp(repo)))
 
 	// start server
+    log.Println("starting AUTH server")
 	if err := http.ListenAndServe(":80", nil); err != nil {
 		log.Fatal(err)
 	}
@@ -43,7 +42,7 @@ func main() {
 
 func authorizeUser(repo repository.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var user dto.AuthUserDTO
+		var user dto.AuthUserRequest
 		if err := encoding.Receive(r, &user); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			log.Println(err)
@@ -76,7 +75,7 @@ func authorizeUser(repo repository.AuthRepository) http.HandlerFunc {
 			return
 		}
 
-		encoding.Send(w, dto.TokenDTO{
+		encoding.Send(w, dto.RefreshTokenResponse{
 			AccessToken:  accessTokenString,
 			RefreshToken: refreshTokenString,
 		})
@@ -85,7 +84,7 @@ func authorizeUser(repo repository.AuthRepository) http.HandlerFunc {
 
 func signUp(repo repository.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var newUser dto.SignUpDTO
+		var newUser dto.SignUpRequest
 		if err := encoding.Receive(r, &newUser); err != nil {
             w.WriteHeader(http.StatusInternalServerError)
             log.Println(err)
@@ -130,7 +129,7 @@ func refreshToken(repo repository.AuthRepository) http.HandlerFunc {
 			return
 		}
 
-		encoding.Send(w, dto.TokenDTO{
+		encoding.Send(w, dto.RefreshTokenResponse{
 			AccessToken:  accessTokenString,
 			RefreshToken: refreshTokenString,
 		})

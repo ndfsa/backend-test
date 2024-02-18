@@ -1,19 +1,17 @@
 package dto
 
-// REQUEST
-type AuthUserDTO struct {
-	Username string `json:"user"`
-	Password string `json:"pass"`
+type AuthUserRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
-type SignUpDTO struct {
-	Fullname string `json:"name"`
-	Username string `json:"user"`
-	Password string `json:"pass"`
+type SignUpRequest struct {
+	Fullname string `json:"fullname"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
-// RESPONSE
-type TokenDTO struct {
+type RefreshTokenResponse struct {
     AccessToken string `json:"accessToken"`
     RefreshToken string `json:"refreshToken"`
 }

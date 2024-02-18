@@ -16,7 +16,6 @@ const (
 )
 
 func main() {
-	// create database connection
 	db, err := sql.Open("pgx", "postgres://back:root@db:5432/cardboard_bank")
 	if err != nil {
 		log.Fatalf("unable to connect to database: %v\n", err)
@@ -33,7 +32,8 @@ func main() {
 	http.Handle("PUT /user", basicAuth(updateUser(userRepo)))
 	http.Handle("DELETE /user", basicAuth(deleteUser(userRepo)))
 
-	http.Handle("GET /service", basicAuth(get(serviceRepo)))
+	http.Handle("GET /service", basicAuth(getAll(serviceRepo)))
+	http.Handle("GET /service/{id}", basicAuth(get(serviceRepo)))
 	http.Handle("POST /service", basicAuth(create(serviceRepo)))
 	http.Handle("DELETE /service", basicAuth(cancel(serviceRepo)))
 
@@ -41,6 +41,7 @@ func main() {
 	http.Handle("POST /transaction", basicAuth(executeTransaction(transactionRepo)))
 	http.Handle("DELETE /transaction", basicAuth(rollbackTransaction(transactionRepo)))
 
+    log.Println("starting API server")
 	if err = http.ListenAndServe(":3000", nil); err != nil {
 		log.Fatal(err)
 	}

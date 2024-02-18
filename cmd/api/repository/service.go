@@ -5,7 +5,6 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
 	"github.com/ndfsa/cardboard-bank/internal/model"
 )
 
@@ -57,7 +56,7 @@ func (r *ServicesRepository) GetAll(
 func (r *ServicesRepository) Get(
 	ctx context.Context,
 	userId uuid.UUID,
-	serviceId uint64) (model.Service, error) {
+	serviceId uuid.UUID) (model.Service, error) {
 
 	rows := r.db.QueryRowContext(ctx,
 		`SELECT s.id, s.type, s.state, s.currency, s.init_balance, s.balance
@@ -88,11 +87,11 @@ func (r *ServicesRepository) Get(
 func (r *ServicesRepository) Create(
 	ctx context.Context,
 	userId uuid.UUID,
-	service dto.ServiceDto) (uint64, error) {
+	service model.Service) (uuid.UUID, error) {
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, err
+		return uuid.UUID{}, err
 	}
 	defer tx.Rollback()
 
@@ -104,24 +103,24 @@ func (r *ServicesRepository) Create(
 		service.Currency,
 		service.InitBalance)
 
-	var serviceId uint64
+	var serviceId uuid.UUID
 	if err := idRow.Err(); err != nil {
-		return 0, err
+		return uuid.UUID{}, err
 	}
 
 	if err := idRow.Scan(&serviceId); err != nil {
-		return 0, err
+		return uuid.UUID{}, err
 	}
 
 	if _, err := tx.ExecContext(ctx,
 		"INSERT INTO user_service (user_id, service_id) VALUES ($1, $2)",
 		userId,
 		serviceId); err != nil {
-		return 0, err
+		return uuid.UUID{}, err
 	}
 
 	if err = tx.Commit(); err != nil {
-		return 0, err
+		return uuid.UUID{}, err
 	}
 
 	return serviceId, nil
@@ -130,7 +129,7 @@ func (r *ServicesRepository) Create(
 func (r *ServicesRepository) Cancel(
 	ctx context.Context,
 	userId uuid.UUID,
-	serviceId uint64) error {
+	serviceId uuid.UUID) error {
 	if _, err := r.db.ExecContext(ctx, `UPDATE services SET state = 'CLD'
         FROM users JOIN user_service ON users.id = user_id
         WHERE users.id = $1 AND services.id = $2`,

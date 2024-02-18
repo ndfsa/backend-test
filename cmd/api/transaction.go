@@ -66,7 +66,7 @@ func executeTransaction(repo repository.TransactionsRepository) http.HandlerFunc
 			return
 		}
 
-		var transaction dto.TransactionDto
+		var transaction dto.ExecuteTransactionRequest
 		if err := encoding.Receive(r, &transaction); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			log.Println(err.Error())
