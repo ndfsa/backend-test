@@ -103,7 +103,7 @@ func signUp(repo repository.AuthRepository) http.HandlerFunc {
 func refreshToken(repo repository.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
-		if err := token.ValidateAccessToken(encodedToken, tokenKey); err != nil {
+		if err := token.ValidateRefreshToken(encodedToken, tokenKey); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			log.Println(err)
 			return

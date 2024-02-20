@@ -24,7 +24,7 @@ func main() {
 
 	userRepo := repository.NewUsersRepository(db)
 	serviceRepo := repository.NewServicesRepository(db)
-	transactionRepo := repository.NewTransactionsRepository(db)
+	// transactionRepo := repository.NewTransactionsRepository(db)
 
 	basicAuth := middleware.BasicAuth(tokenKey)
 
@@ -37,9 +37,9 @@ func main() {
 	http.Handle("POST /service", basicAuth(create(serviceRepo)))
 	http.Handle("DELETE /service", basicAuth(cancel(serviceRepo)))
 
-	http.Handle("GET /transaction", basicAuth(getTransaction(transactionRepo)))
-	http.Handle("POST /transaction", basicAuth(executeTransaction(transactionRepo)))
-	http.Handle("DELETE /transaction", basicAuth(rollbackTransaction(transactionRepo)))
+	// http.Handle("GET /transaction", basicAuth(getTransaction(transactionRepo)))
+	// http.Handle("POST /transaction", basicAuth(executeTransaction(transactionRepo)))
+	// http.Handle("DELETE /transaction", basicAuth(rollbackTransaction(transactionRepo)))
 
     log.Println("starting API server")
 	if err = http.ListenAndServe(":3000", nil); err != nil {
