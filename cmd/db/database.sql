@@ -18,7 +18,8 @@ CREATE TYPE CURRENCY AS ENUM ('USD', 'CAD', 'JPY', 'NOK');
 DROP TYPE IF EXISTS SERVICE_TYPE CASCADE;
 -- SVA Savings account
 -- CQA Checking account
-CREATE TYPE SERVICE_TYPE AS ENUM ('SVA', 'CQA');
+-- LON Loan
+CREATE TYPE SERVICE_TYPE AS ENUM ('SVA', 'CQA', 'LON');
 
 DROP TYPE IF EXISTS SERVICE_STATE CASCADE;
 -- REQ Requested service
@@ -33,6 +34,7 @@ CREATE TABLE services (
     type SERVICE_TYPE,
     state SERVICE_STATE,
     currency CURRENCY,
+    init_balance NUMERIC(20, 2),
     balance NUMERIC(20, 2),
     PRIMARY KEY (id)
 );

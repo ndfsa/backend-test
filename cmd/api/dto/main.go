@@ -13,6 +13,10 @@ type CreateServiceRequest struct {
 	InitBalance decimal.Decimal `json:"init_balance"`
 }
 
+type CreateServiceResponse struct {
+	Id string `json:"id"`
+}
+
 type ExecuteTransactionRequest struct {
 	From     uint64          `json:"from"`
 	To       uint64          `json:"to"`

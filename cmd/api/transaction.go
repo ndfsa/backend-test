@@ -15,7 +15,7 @@ import (
 func CreateTransactionRoutes(db *sql.DB, baseUrl string, tokenKey string) {
 }
 
-func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
+func getTransactionById(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 
@@ -25,18 +25,7 @@ func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 			log.Println(err)
 		}
 
-		transactionIdString := r.URL.Query().Get("id")
-
-		if transactionIdString == "" {
-			err := repo.GetAll(userId)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				log.Println(err.Error())
-				return
-			}
-			// return transaction list
-		}
-
+		transactionIdString := r.PathValue("transactionId")
 		transactionId, err := uuid.Parse(transactionIdString)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -50,8 +39,26 @@ func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 			log.Println(err.Error())
 			return
 		}
+	})
+}
 
-		// return one transaction
+func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		encodedToken := r.Header.Get("Authorization")
+
+		_, err := token.GetUserId(encodedToken, tokenKey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+		}
+
+		// transactions, err := repo.GetAll(userId)
+		// if err != nil {
+		// 	w.WriteHeader(http.StatusInternalServerError)
+		// 	log.Println(err.Error())
+		// 	return
+		// }
+		//
 	})
 }
 

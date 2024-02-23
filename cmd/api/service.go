@@ -85,7 +85,7 @@ func create(repo repository.ServicesRepository) http.HandlerFunc {
 		serviceId, err := repo.Create(r.Context(), userId, model.Service{
 			Type:        serviceDto.Type,
 			Currency:    serviceDto.Currency,
-			InitBalance: serviceDto.InitBalance,
+			Balance: serviceDto.InitBalance,
 		})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -93,7 +93,9 @@ func create(repo repository.ServicesRepository) http.HandlerFunc {
 			return
 		}
 
-		encoding.Send(w, serviceId)
+		encoding.Send(w, dto.CreateServiceResponse{
+            Id: serviceId.String(),
+        })
 	})
 }
 

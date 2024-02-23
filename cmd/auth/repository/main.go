@@ -62,9 +62,14 @@ func (r *AuthRepository) CreateUser(ctx context.Context, newUser dto.SignUpReque
 		return err
 	}
 
+    id, err := uuid.NewV7()
+    if err != nil {
+        return err
+    }
+
 	if _, err := r.db.ExecContext(ctx,
 		"INSERT INTO users(id, fullname, username, password) VALUES ($1, $2, $3, $4)",
-		uuid.New(), newUser.Fullname, newUser.Username, string(hashedPass)); err != nil {
+		id, newUser.Fullname, newUser.Username, string(hashedPass)); err != nil {
 		return err
 	}
 

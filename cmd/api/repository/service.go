@@ -76,7 +76,7 @@ func (r *ServicesRepository) Get(
 		&service.Type,
 		&service.State,
 		&service.Currency,
-		&service.InitBalance,
+        &service.InitBalance,
 		&service.Balance); err != nil {
 		return service, err
 	}
@@ -95,20 +95,19 @@ func (r *ServicesRepository) Create(
 	}
 	defer tx.Rollback()
 
-	idRow := tx.QueryRowContext(ctx,
-		`INSERT INTO services (type, state, currency, init_balance, balance)
-        VALUES ($1, 'REQ', $2, $3, 0)
-        RETURNING id`,
+    serviceId, err := uuid.NewV7()
+    if err != nil {
+        return uuid.UUID{}, err
+    }
+
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO services (id, type, state, currency, init_balance, balance)
+        VALUES ($1, $2, 'REQ', $3, $4, $5)`,
+		serviceId,
 		service.Type,
 		service.Currency,
-		service.InitBalance)
-
-	var serviceId uuid.UUID
-	if err := idRow.Err(); err != nil {
-		return uuid.UUID{}, err
-	}
-
-	if err := idRow.Scan(&serviceId); err != nil {
+        0,
+		service.Balance); err != nil {
 		return uuid.UUID{}, err
 	}
 
@@ -130,7 +129,8 @@ func (r *ServicesRepository) Cancel(
 	ctx context.Context,
 	userId uuid.UUID,
 	serviceId uuid.UUID) error {
-	if _, err := r.db.ExecContext(ctx, `UPDATE services SET state = 'CLD'
+	if _, err := r.db.ExecContext(ctx,
+		`UPDATE services SET state = 'CLD'
         FROM users JOIN user_service ON users.id = user_id
         WHERE users.id = $1 AND services.id = $2`,
 		userId,

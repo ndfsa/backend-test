@@ -34,7 +34,7 @@ func main() {
 	http.Handle("POST /auth/signup", middleware.Basic(signUp(repo)))
 
 	// start server
-    log.Println("starting AUTH server")
+	log.Println("starting AUTH server")
 	if err := http.ListenAndServe(":80", nil); err != nil {
 		log.Fatal(err)
 	}
@@ -86,8 +86,8 @@ func signUp(repo repository.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var newUser dto.SignUpRequest
 		if err := encoding.Receive(r, &newUser); err != nil {
-            w.WriteHeader(http.StatusInternalServerError)
-            log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
 			return
 		}
 
