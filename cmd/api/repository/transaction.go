@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/cmd/api/dto"
+	"github.com/ndfsa/cardboard-bank/internal/model"
 )
 
 type TransactionsRepository struct {
@@ -87,8 +88,8 @@ func (r *TransactionsRepository) Get(userId uuid.UUID, transactionId uuid.UUID) 
 	return nil
 }
 
-func (r *TransactionsRepository) GetAll(userId uuid.UUID) error {
-	return nil
+func (r *TransactionsRepository) GetAll(userId uuid.UUID) ([]model.Transaction, error) {
+	return nil, nil
 }
 
 func (r *TransactionsRepository) Rollback(userId uuid.UUID, transactionId uuid.UUID) error {

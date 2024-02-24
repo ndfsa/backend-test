@@ -6,7 +6,7 @@ import (
 )
 
 type User struct {
-	Id   uuid.UUID `json:"id"`
+	Id       uuid.UUID `json:"id"`
 	Fullname string    `json:"fullname"`
 	Username string    `json:"username"`
 }
@@ -18,4 +18,13 @@ type Service struct {
 	Currency    string          `json:"currency"`
 	InitBalance decimal.Decimal `json:"init_balance"`
 	Balance     decimal.Decimal `json:"balance"`
+}
+
+type Transaction struct {
+	Id       uuid.UUID       `json:"id"`
+	State    int8            `json:"state"`
+	Currency string          `json:"currency"`
+	Amount   decimal.Decimal `json:"amount"`
+	From     uuid.UUID       `json:"from"`
+	To       uuid.UUID       `json:"to"`
 }

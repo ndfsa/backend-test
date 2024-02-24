@@ -24,7 +24,7 @@ func main() {
 
 	userRepo := repository.NewUsersRepository(db)
 	serviceRepo := repository.NewServicesRepository(db)
-	// transactionRepo := repository.NewTransactionsRepository(db)
+	transactionRepo := repository.NewTransactionsRepository(db)
 
 	basicAuth := middleware.BasicAuth(tokenKey)
 
@@ -32,17 +32,16 @@ func main() {
 	http.Handle("PUT /user", basicAuth(updateUser(userRepo)))
 	http.Handle("DELETE /user", basicAuth(deleteUser(userRepo)))
 
-	http.Handle("GET /service", basicAuth(getAll(serviceRepo)))
-	http.Handle("GET /service/{id}", basicAuth(get(serviceRepo)))
-	http.Handle("POST /service", basicAuth(create(serviceRepo)))
-	http.Handle("DELETE /service/{id}", basicAuth(cancel(serviceRepo)))
+	http.Handle("GET /service", basicAuth(getAllServices(serviceRepo)))
+	http.Handle("GET /service/{id}", basicAuth(getService(serviceRepo)))
+	http.Handle("GET /service/{id}/transaction", basicAuth(getServiceTransactions(serviceRepo)))
+	http.Handle("POST /service", basicAuth(createService(serviceRepo)))
+	http.Handle("DELETE /service/{id}", basicAuth(cancelService(serviceRepo)))
 
-	// http.Handle("GET /transaction", basicAuth(getTransaction(transactionRepo)))
-	// http.Handle("GET /transaction/{transactionId}", basicAuth(getTransaction(transactionRepo)))
-	// http.Handle("GET /transaction/{serviceId}/{transactionId}",
-	// 	basicAuth(getTransaction(transactionRepo)))
-	// http.Handle("POST /transaction", basicAuth(executeTransaction(transactionRepo)))
-	// http.Handle("DELETE /transaction", basicAuth(rollbackTransaction(transactionRepo)))
+	http.Handle("GET /transaction", basicAuth(getAllTransactions(transactionRepo)))
+	http.Handle("GET /transaction/{id}", basicAuth(getTransaction(transactionRepo)))
+	http.Handle("POST /transaction", basicAuth(executeTransaction(transactionRepo)))
+	http.Handle("DELETE /transaction/{id}", basicAuth(rollbackTransaction(transactionRepo)))
 
 	log.Println("starting API server")
 	if err = http.ListenAndServe(":80", nil); err != nil {

@@ -12,7 +12,7 @@ import (
 	"github.com/ndfsa/cardboard-bank/internal/token"
 )
 
-func getAll(repo repository.ServicesRepository) http.HandlerFunc {
+func getAllServices(repo repository.ServicesRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 
@@ -34,7 +34,37 @@ func getAll(repo repository.ServicesRepository) http.HandlerFunc {
 	})
 }
 
-func get(repo repository.ServicesRepository) http.HandlerFunc {
+func getServiceTransactions(repo repository.ServicesRepository) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		encodedToken := r.Header.Get("Authorization")
+
+		userId, err := token.GetUserId(encodedToken, tokenKey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+			return
+		}
+
+		serviceIdQuery := r.PathValue("id")
+		serviceId, err := uuid.Parse(serviceIdQuery)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
+
+		service, err := repo.GetServiceTransactions(r.Context(), userId, serviceId)
+		if err != nil {
+			w.WriteHeader(http.StatusNoContent)
+			log.Println(err)
+			return
+		}
+
+		encoding.Send(w, service)
+	})
+}
+
+func getService(repo repository.ServicesRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 
@@ -64,7 +94,7 @@ func get(repo repository.ServicesRepository) http.HandlerFunc {
 	})
 }
 
-func create(repo repository.ServicesRepository) http.HandlerFunc {
+func createService(repo repository.ServicesRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 
@@ -99,7 +129,7 @@ func create(repo repository.ServicesRepository) http.HandlerFunc {
 	})
 }
 
-func cancel(repo repository.ServicesRepository) http.HandlerFunc {
+func cancelService(repo repository.ServicesRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 

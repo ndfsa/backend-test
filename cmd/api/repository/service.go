@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/internal/model"
@@ -14,6 +15,59 @@ type ServicesRepository struct {
 
 func NewServicesRepository(db *sql.DB) ServicesRepository {
 	return ServicesRepository{db}
+}
+
+func (r *ServicesRepository) GetServiceTransactions(
+	ctx context.Context,
+	userId uuid.UUID,
+	serviceId uuid.UUID) ([]model.Transaction, error) {
+
+	row := r.db.QueryRowContext(ctx,
+		`SELECT true FROM user_service
+        WHERE (userId, serviceId) = ($1, $2)`, userId, serviceId)
+	if err := row.Err(); err != nil {
+		return nil, err
+	}
+
+    var exists bool
+    if err := row.Scan(&exists); err != nil {
+        return nil, err
+    }
+    if !exists {
+        return nil, errors.New("user does not have service")
+    }
+
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT t.id, t.state, t.currency, t.amount, t.from, t.to
+        FROM transactions t
+        WHERE t.from = $1
+        OR t.to = $1`, serviceId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	transactions := make([]model.Transaction, 0)
+	for rows.Next() {
+		var transaction model.Transaction
+		if err := rows.Scan(
+			&transaction.Id,
+			&transaction.State,
+			&transaction.Currency,
+			&transaction.Amount,
+			&transaction.From,
+			&transaction.To); err != nil {
+			return nil, err
+		}
+
+		transactions = append(transactions, transaction)
+	}
+
+	if err := rows.Err(); err != nil {
+		return transactions, err
+	}
+
+	return transactions, nil
 }
 
 func (r *ServicesRepository) GetAll(
@@ -76,7 +130,7 @@ func (r *ServicesRepository) Get(
 		&service.Type,
 		&service.State,
 		&service.Currency,
-        &service.InitBalance,
+		&service.InitBalance,
 		&service.Balance); err != nil {
 		return service, err
 	}
@@ -95,10 +149,10 @@ func (r *ServicesRepository) Create(
 	}
 	defer tx.Rollback()
 
-    serviceId, err := uuid.NewV7()
-    if err != nil {
-        return uuid.UUID{}, err
-    }
+	serviceId, err := uuid.NewV7()
+	if err != nil {
+		return uuid.UUID{}, err
+	}
 
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO services (id, type, state, currency, init_balance, balance)
@@ -106,7 +160,7 @@ func (r *ServicesRepository) Create(
 		serviceId,
 		service.Type,
 		service.Currency,
-        0,
+		0,
 		service.Balance); err != nil {
 		return uuid.UUID{}, err
 	}

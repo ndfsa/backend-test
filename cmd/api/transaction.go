@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 
@@ -12,10 +11,7 @@ import (
 	"github.com/ndfsa/cardboard-bank/internal/token"
 )
 
-func CreateTransactionRoutes(db *sql.DB, baseUrl string, tokenKey string) {
-}
-
-func getTransactionById(repo repository.TransactionsRepository) http.HandlerFunc {
+func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 
@@ -25,40 +21,41 @@ func getTransactionById(repo repository.TransactionsRepository) http.HandlerFunc
 			log.Println(err)
 		}
 
-		transactionIdString := r.PathValue("transactionId")
+		transactionIdString := r.PathValue("id")
 		transactionId, err := uuid.Parse(transactionIdString)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err.Error())
+			log.Println(err)
 			return
 		}
 
 		err = repo.Get(userId, transactionId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err.Error())
+			log.Println(err)
 			return
 		}
 	})
 }
 
-func getTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
+func getAllTransactions(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 
-		_, err := token.GetUserId(encodedToken, tokenKey)
+		userId, err := token.GetUserId(encodedToken, tokenKey)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			log.Println(err)
 		}
 
-		// transactions, err := repo.GetAll(userId)
-		// if err != nil {
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	log.Println(err.Error())
-		// 	return
-		// }
-		//
+		transactions, err := repo.GetAll(userId)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err.Error())
+			return
+		}
+
+        encoding.Send(w, transactions)
 	})
 }
 
@@ -76,13 +73,13 @@ func executeTransaction(repo repository.TransactionsRepository) http.HandlerFunc
 		var transaction dto.ExecuteTransactionRequest
 		if err := encoding.Receive(r, &transaction); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			log.Println(err.Error())
+			log.Println(err)
 			return
 		}
 
 		if err := repo.Execute(r.Context(), userId, transaction); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err.Error())
+			log.Println(err)
 			return
 		}
 	})
@@ -90,9 +87,26 @@ func executeTransaction(repo repository.TransactionsRepository) http.HandlerFunc
 
 func rollbackTransaction(repo repository.TransactionsRepository) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := repo.Rollback(uuid.UUID{}, uuid.UUID{}); err != nil {
+        encodedToken := r.Header.Get("Authorization")
+
+        userId, err := token.GetUserId(encodedToken, tokenKey)
+        if err != nil {
+            w.WriteHeader(http.StatusUnauthorized)
+            log.Println(err)
+            return
+        }
+
+        transactionIdString := r.PathValue("id")
+        transactionId, err := uuid.Parse(transactionIdString)
+        if err != nil {
+            w.WriteHeader(http.StatusNotFound)
+            log.Println(err)
+            return
+        }
+
+		if err := repo.Rollback(userId, transactionId); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			log.Println(err.Error())
+			log.Println(err)
 			return
 		}
 	})

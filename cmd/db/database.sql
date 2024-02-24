@@ -63,7 +63,11 @@ CREATE TABLE transactions (
     state SMALLINT,
     currency CURRENCY,
     amount NUMERIC(20, 2),
-    PRIMARY KEY (id)
+    from UUID,
+    to UUID,
+    PRIMARY KEY (id),
+    FOREIGN KEY (from) REFERENCES services ON DELETE CASCADE,
+    FOREIGN KEY (to) REFERENCES services ON DELETE CASCADE,
 );
 
 CREATE TABLE user_service (
@@ -72,19 +76,6 @@ CREATE TABLE user_service (
     PRIMARY KEY (user_id, service_id),
     FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services ON DELETE CASCADE
-);
-
--- transactions to or from the outside, are represented as from NULL or to NULL respectively
-DROP TABLE IF EXISTS service_transaction CASCADE;
-CREATE TABLE service_transaction (
-    transaction_id UUID,
-    from_service_id UUID,
-    to_service_id UUID,
-    user_id UUID,
-    FOREIGN KEY (transaction_id) REFERENCES transactions ON DELETE CASCADE,
-    FOREIGN KEY (from_service_id) REFERENCES services ON DELETE CASCADE,
-    FOREIGN KEY (to_service_id) REFERENCES services ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users ON DELETE CASCADE
 );
 
 CREATE USER back WITH PASSWORD 'root';
