@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/repository"
+	"github.com/ndfsa/cardboard-bank/web/dto"
 	"github.com/ndfsa/cardboard-bank/web/middleware"
 )
 
@@ -27,7 +28,7 @@ func (factory *UsersHandlerFactory) CreateUser() http.Handler {
 		factory.mdf.Logger,
 		factory.mdf.UploadLimit(1000))
 	f := func(w http.ResponseWriter, r *http.Request) error {
-		var req CreateUserRequestDTO
+		var req dto.CreateUserRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return err
@@ -44,7 +45,7 @@ func (factory *UsersHandlerFactory) CreateUser() http.Handler {
 			return err
 		}
 
-		if err := json.NewEncoder(w).Encode(CreateUserResponseDTO{
+		if err := json.NewEncoder(w).Encode(dto.CreateUserResponseDTO{
 			Id: user.Id.String(),
 		}); err != nil {
 			w.WriteHeader(http.StatusCreated)
@@ -73,15 +74,17 @@ func (factory *UsersHandlerFactory) ReadSingleUser() http.Handler {
 			return err
 		}
 
-		user, err := factory.repo.GetUser(r.Context(), userId)
+		user, err := factory.repo.FindUser(r.Context(), userId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
 
-		if err := json.NewEncoder(w).Encode(ReadUserResponseDTO{
-			Id:   user.Id.String(),
-			Role: user.Role,
+		if err := json.NewEncoder(w).Encode(dto.ReadUserResponseDTO{
+			Id:       user.Id.String(),
+			Role:     user.Role,
+			Username: user.Username,
+			Fullname: user.Fullname,
 		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
@@ -111,15 +114,15 @@ func (factory *UsersHandlerFactory) ReadMultipleUsers() http.Handler {
 			cursor = uuid.UUID{}
 		}
 
-		users, err := factory.repo.GetUsers(r.Context(), cursor)
+		users, err := factory.repo.FindAllUsers(r.Context(), cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
 
-		res := make([]ReadUserResponseDTO, 0, len(users))
+		res := make([]dto.ReadUserResponseDTO, 0, len(users))
 		for _, user := range users {
-			res = append(res, ReadUserResponseDTO{
+			res = append(res, dto.ReadUserResponseDTO{
 				Id:       user.Id.String(),
 				Role:     user.Role,
 				Username: user.Username,
@@ -143,7 +146,7 @@ func (factory *UsersHandlerFactory) UpdateUser() http.Handler {
 		factory.mdf.UploadLimit(1000),
 		factory.mdf.Auth)
 	f := func(w http.ResponseWriter, r *http.Request) error {
-		var req UpdateUserRequestDTO
+		var req dto.UpdateUserRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err

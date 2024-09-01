@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/repository"
+	"github.com/ndfsa/cardboard-bank/web/dto"
 	"github.com/ndfsa/cardboard-bank/web/middleware"
 )
 
@@ -27,7 +28,7 @@ func (factory *TransactionsHandlerFactory) CreateTransaction() http.Handler {
 		factory.mdf.UploadLimit(1000),
 		factory.mdf.Auth)
 	f := func(w http.ResponseWriter, r *http.Request) error {
-		var req CreateTransactionRequestDTO
+		var req dto.CreateTransactionRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return err
@@ -39,12 +40,12 @@ func (factory *TransactionsHandlerFactory) CreateTransaction() http.Handler {
 			return err
 		}
 
-		if err := factory.repo.RegisterTransaction(r.Context(), transaction); err != nil {
+		if err := factory.repo.CreateTransaction(r.Context(), transaction); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
 
-		if err := json.NewEncoder(w).Encode(CreateTransactionResponseDTO{
+		if err := json.NewEncoder(w).Encode(dto.CreateTransactionResponseDTO{
 			Id: transaction.Id.String(),
 		}); err != nil {
 			w.WriteHeader(http.StatusCreated)
@@ -68,13 +69,21 @@ func (factory *TransactionsHandlerFactory) ReadSingleTransaction() http.Handler 
 			return err
 		}
 
-		transaction, err := factory.repo.GetTransaction(r.Context(), transactionId)
+		transaction, err := factory.repo.FindTransaction(r.Context(), transactionId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
 
-		if err := json.NewEncoder(w).Encode(transaction); err != nil {
+		if err := json.NewEncoder(w).Encode(dto.ReadTransactionResponseDTO{
+			Id:          transaction.Id.String(),
+			State:       transaction.State,
+			Time:        transaction.Time,
+			Currency:    transaction.Currency,
+			Amount:      transaction.Amount.String(),
+			Source:      transaction.Source.String(),
+			Destination: transaction.Destination.String(),
+		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
@@ -103,13 +112,26 @@ func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handl
 			cursor = uuid.UUID{}
 		}
 
-		transactions, err := factory.repo.GetTransactions(r.Context(), cursor)
+		transactions, err := factory.repo.FindAllTransactions(r.Context(), cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
 
-		if err := json.NewEncoder(w).Encode(transactions); err != nil {
+		res := make([]dto.ReadTransactionResponseDTO, 0, len(transactions))
+		for _, transaction := range transactions {
+			res = append(res, dto.ReadTransactionResponseDTO{
+				Id:          transaction.Id.String(),
+				State:       transaction.State,
+				Time:        transaction.Time,
+				Currency:    transaction.Currency,
+				Amount:      transaction.Amount.String(),
+				Source:      transaction.Source.String(),
+				Destination: transaction.Destination.String(),
+			})
+		}
+
+		if err := json.NewEncoder(w).Encode(res); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}

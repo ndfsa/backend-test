@@ -35,7 +35,7 @@ func (repo *ServicesRepository) CreateService(
 	return nil
 }
 
-func (repo *ServicesRepository) GetService(
+func (repo *ServicesRepository) FindService(
 	ctx context.Context, id uuid.UUID,
 ) (model.Service, error) {
 	row := repo.db.QueryRowContext(ctx,
@@ -56,7 +56,7 @@ func (repo *ServicesRepository) GetService(
 	return service, nil
 }
 
-func (repo *ServicesRepository) GetServices(
+func (repo *ServicesRepository) FindAllServices(
 	ctx context.Context, cursor uuid.UUID,
 ) ([]model.Service, error) {
 	var rows *sql.Rows

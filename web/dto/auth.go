@@ -1,4 +1,4 @@
-package main
+package dto
 
 type AuthRequestDTO struct {
 	Username string `json:"username"`

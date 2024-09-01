@@ -18,7 +18,7 @@ type TransactionsRepository struct {
 
 func (repo *TransactionsRepository) worker(jobs <-chan model.Transaction) {
 	for transaction := range jobs {
-		if err := repo.executeTransaction(transaction); err != nil {
+		if err := repo.ExecuteTransaction(transaction); err != nil {
 			continue
 		}
 	}
@@ -43,7 +43,7 @@ func NewTransactionsRepository(db *sql.DB, queue, workers int) TransactionsRepos
 	return repo
 }
 
-func (repo *TransactionsRepository) RegisterTransaction(
+func (repo *TransactionsRepository) CreateTransaction(
 	ctx context.Context,
 	transaction model.Transaction,
 ) error {
@@ -70,7 +70,7 @@ func (repo *TransactionsRepository) RegisterTransaction(
 	}
 }
 
-func (repo *TransactionsRepository) executeTransaction(
+func (repo *TransactionsRepository) ExecuteTransaction(
 	transaction model.Transaction,
 ) error {
 	tx, err := repo.db.BeginTx(context.Background(), nil)
@@ -117,7 +117,7 @@ func (repo *TransactionsRepository) executeTransaction(
 	return nil
 }
 
-func (repo *TransactionsRepository) GetTransaction(
+func (repo *TransactionsRepository) FindTransaction(
 	ctx context.Context,
 	id uuid.UUID,
 ) (model.Transaction, error) {
@@ -140,7 +140,7 @@ func (repo *TransactionsRepository) GetTransaction(
 	return transaction, nil
 }
 
-func (repo *TransactionsRepository) GetTransactions(
+func (repo *TransactionsRepository) FindAllTransactions(
 	ctx context.Context,
 	cursor uuid.UUID,
 ) ([]model.Transaction, error) {

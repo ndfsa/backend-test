@@ -31,7 +31,7 @@ func (repo *UsersRepository) CreateUser(ctx context.Context, user model.User) er
 	return nil
 }
 
-func (repo *UsersRepository) GetUser(ctx context.Context, userId uuid.UUID) (model.User, error) {
+func (repo *UsersRepository) FindUser(ctx context.Context, userId uuid.UUID) (model.User, error) {
 	row := repo.db.QueryRowContext(ctx,
 		`select id, role, username, password, fullname from users
         where id = $1`, userId)
@@ -49,7 +49,7 @@ func (repo *UsersRepository) GetUser(ctx context.Context, userId uuid.UUID) (mod
 	return user, nil
 }
 
-func (repo *UsersRepository) GetUsers(
+func (repo *UsersRepository) FindAllUsers(
 	ctx context.Context,
 	cursor uuid.UUID,
 ) ([]model.User, error) {
@@ -100,8 +100,9 @@ func (repo *UsersRepository) UpdateUser(ctx context.Context, user model.User) er
 	if _, err := repo.db.ExecContext(ctx,
 		`update users set
         username = coalesce(nullif($1, ''), username),
-        fullname = coalesce(nullif($2, ''), fullname)
-        where id = $3`, user.Username, user.Fullname, user.Id); err != nil {
+        fullname = coalesce(nullif($2, ''), fullname),
+        password = coalesce(nullif($3, ''), password)
+        where id = $4`, user.Username, user.Fullname, user.Passhash, user.Id); err != nil {
 		return err
 	}
 
