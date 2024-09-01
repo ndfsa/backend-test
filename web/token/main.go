@@ -2,6 +2,7 @@ package token
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"aidanwoods.dev/go-paseto"
@@ -11,10 +12,43 @@ import (
 const (
 	USER_ID_KEY = "userId"
 	REFRESH_KEY = "refreshKey"
+    KEY = "2bbb515c1311dd69a609a0d553dc7ac1ac8eadc2b22daa9aaa99483d2f381374"
 )
 
-func GetUserId(encodedToken string, hexKey string) (uuid.UUID, error) {
+func GetUserId(bearerToken string) (uuid.UUID, error) {
+    _, encodedToken, _ := strings.Cut(bearerToken, " ")
 	parser := paseto.NewParserWithoutExpiryCheck()
+	key, err := paseto.V4SymmetricKeyFromHex(KEY)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	token, err := parser.ParseV4Local(key, encodedToken, nil)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	encodedId, err := token.GetString(USER_ID_KEY)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	id, err := uuid.Parse(encodedId)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	return id, nil
+}
+
+func ValidateAccessToken(bearerToken string, hexKey string) (uuid.UUID, error) {
+    _, encodedToken, found := strings.Cut(bearerToken, " ")
+    if !found {
+        return uuid.UUID{}, errors.New("invalid bearer token")
+    }
+
+	parser := paseto.NewParserForValidNow()
+
 	key, err := paseto.V4SymmetricKeyFromHex(hexKey)
 	if err != nil {
 		return uuid.UUID{}, err
@@ -38,46 +72,7 @@ func GetUserId(encodedToken string, hexKey string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func ValidateAccessToken(encodedToken string, hexKey string) error {
-	parser := paseto.NewParserForValidNow()
-
-	key, err := paseto.V4SymmetricKeyFromHex(hexKey)
-	if err != nil {
-		return err
-	}
-
-	_, err = parser.ParseV4Local(key, encodedToken, nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func ValidateRefreshToken(encodedToken, hexKey string) error {
-	parser := paseto.NewParserForValidNow()
-
-	key, err := paseto.V4SymmetricKeyFromHex(hexKey)
-	if err != nil {
-		return err
-	}
-
-	token, err := parser.ParseV4Local(key, encodedToken, nil)
-	if err != nil {
-		return err
-	}
-
-	var refresh bool
-	if err := token.Get(REFRESH_KEY, &refresh); err != nil {
-		return err
-	}
-
-    if !refresh {
-        return errors.New("not a refresh token")
-    }
-	return nil
-}
-
-func GenerateAccessToken(userId uuid.UUID, tokenKey string) (string, error) {
+func GenerateAccessToken(userId uuid.UUID) (string, error) {
 	token := paseto.NewToken()
 
 	token.SetIssuedAt(time.Now())
@@ -86,7 +81,7 @@ func GenerateAccessToken(userId uuid.UUID, tokenKey string) (string, error) {
 
 	token.SetString(USER_ID_KEY, userId.String())
 
-	key, err := paseto.V4SymmetricKeyFromHex(tokenKey)
+	key, err := paseto.V4SymmetricKeyFromHex(KEY)
 	if err != nil {
 		return "", err
 	}
@@ -94,7 +89,7 @@ func GenerateAccessToken(userId uuid.UUID, tokenKey string) (string, error) {
 	return token.V4Encrypt(key, nil), nil
 }
 
-func GenerateRefreshToken(userId uuid.UUID, tokenKey string) (string, error) {
+func GenerateRefreshToken(userId uuid.UUID) (string, error) {
 	token := paseto.NewToken()
 
 	token.SetIssuedAt(time.Now())
@@ -104,7 +99,7 @@ func GenerateRefreshToken(userId uuid.UUID, tokenKey string) (string, error) {
 	token.SetString(USER_ID_KEY, userId.String())
 	token.Set(REFRESH_KEY, true)
 
-	key, err := paseto.V4SymmetricKeyFromHex(tokenKey)
+	key, err := paseto.V4SymmetricKeyFromHex(KEY)
 	if err != nil {
 		return "", err
 	}
