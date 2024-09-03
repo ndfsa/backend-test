@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/model"
@@ -52,41 +53,76 @@ func (repo *TransactionsRepository) CreateTransaction(
 func (repo *TransactionsRepository) ExecuteTransaction(
 	transaction model.Transaction,
 ) error {
+	if transaction.Source == transaction.Destination {
+		return fmt.Errorf("transaction: %s invalid, src and dst are the same", transaction.Id)
+	}
+
 	tx, err := repo.db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec(
-		`select balance from services
-        where id = $1 or id = $2 for no key update`,
-		transaction.Source,
-		transaction.Destination); err != nil {
+	srcRow := tx.QueryRow(
+		`select id, type, state, currency, init_balance, balance from services
+        where id = $1 for no key update`,
+		transaction.Source)
+
+	var srcService model.Service
+	if err := srcRow.Scan(
+		&srcService.Id,
+		&srcService.Type,
+		&srcService.State,
+		&srcService.Currency,
+		&srcService.InitBalance,
+		&srcService.Balance,
+	); err != nil {
+		return err
+	}
+
+	if err := srcService.Debit(transaction.Amount); err != nil {
+		return err
+	}
+
+	dstRow := tx.QueryRow(
+		`select id, type, state, currency, init_balance, balance from services
+        where id = $1 for no key update`,
+		transaction.Source)
+
+	var dstService model.Service
+	if err := dstRow.Scan(
+		&dstService.Id,
+		&dstService.Type,
+		&dstService.State,
+		&dstService.Currency,
+		&dstService.InitBalance,
+		&dstService.Balance,
+	); err != nil {
+		return err
+	}
+
+	if err := dstService.Credit(transaction.Amount); err != nil {
 		return err
 	}
 
 	if _, err := tx.Exec(
-		`update services set
-        balance = balance - $1
+		`update services set balance = $1
         where id = $2`,
-		transaction.Amount,
-		transaction.Source); err != nil {
+		srcService.Balance,
+		srcService.Id); err != nil {
 		return err
 	}
 
 	if _, err := tx.Exec(
-		`update services set
-        balance = balance + $1
+		`update services set balance = $1
         where id = $2`,
-		transaction.Amount,
-		transaction.Destination); err != nil {
+		dstService.Balance,
+		dstService.Id); err != nil {
 		return err
 	}
 
 	if _, err := tx.Exec(
-		`update transactions set
-        state = $1
+		`update transactions set state = $1
         where id = $2`, model.TransactionStateSuccess, transaction.Id); err != nil {
 		return err
 	}

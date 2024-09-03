@@ -1,8 +1,8 @@
 DROP TYPE IF EXISTS USER_ROLE CASCADE;
 -- USR Regular
--- OFC Officer
+-- TEL Teller
 -- ADM Administrator
-CREATE TYPE USER_ROLE AS ENUM ('USR', 'OFC', 'ADM');
+CREATE TYPE USER_ROLE AS ENUM ('USR', 'TEL', 'ADM');
 
 DROP TABLE IF EXISTS user_service CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -42,6 +42,7 @@ CREATE TABLE services (
     id UUID,
     type SERVICE_TYPE,
     state SERVICE_STATE,
+    permissions BIGINT,
     currency CURRENCY,
     init_balance NUMERIC(20, 2),
     balance NUMERIC(20, 2),

@@ -21,11 +21,12 @@ func (repo *ServicesRepository) CreateService(
 	ctx context.Context, service model.Service,
 ) error {
 	if _, err := repo.db.ExecContext(ctx,
-		`insert into services(id, type, state, currency, init_balance, balance)
+		`insert into services(id, type, state, permissions, currency, init_balance, balance)
         values ($1, $2, $3, $4, $5, $6)`,
 		service.Id,
 		service.Type,
 		service.State,
+		service.Permissions,
 		service.Currency,
 		service.InitBalance,
 		service.Balance); err != nil {
@@ -39,14 +40,15 @@ func (repo *ServicesRepository) FindService(
 	ctx context.Context, id uuid.UUID,
 ) (model.Service, error) {
 	row := repo.db.QueryRowContext(ctx,
-		"select id, type, state, currency, init_balance, balance from services where id = $1",
-		id)
+		`select id, type, state, permissions, currency, init_balance, balance
+        from services where id = $1`, id)
 
 	var service model.Service
 	if err := row.Scan(
 		&service.Id,
 		&service.Type,
 		&service.State,
+		&service.Permissions,
 		&service.Currency,
 		&service.InitBalance,
 		&service.Balance); err != nil {
@@ -64,13 +66,13 @@ func (repo *ServicesRepository) FindAllServices(
 
 	if (cursor != uuid.UUID{}) {
 		rows, err = repo.db.QueryContext(ctx,
-			`select id, type, state, currency, init_balance, balance from services
+			`select id, type, state, permissions, currency, init_balance, balance from services
             where id > $1
             order by id
             limit 10`, cursor)
 	} else {
 		rows, err = repo.db.QueryContext(ctx,
-			`select id, type, state, currency, init_balance, balance from services
+			`select id, type, state, permissions, currency, init_balance, balance from services
             order by id
             limit 10`)
 	}
@@ -85,6 +87,7 @@ func (repo *ServicesRepository) FindAllServices(
 			&service.Id,
 			&service.Type,
 			&service.State,
+			&service.Permissions,
 			&service.Currency,
 			&service.InitBalance,
 			&service.Balance); err != nil {
