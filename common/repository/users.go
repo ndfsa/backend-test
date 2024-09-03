@@ -12,7 +12,7 @@ type UsersRepository struct {
 	db *sql.DB
 }
 
-func NewUserRepository(db *sql.DB) UsersRepository {
+func NewUsrRepository(db *sql.DB) UsersRepository {
 	return UsersRepository{db}
 }
 

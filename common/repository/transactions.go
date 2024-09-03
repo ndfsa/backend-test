@@ -10,36 +10,15 @@ import (
 )
 
 type TransactionsRepository struct {
-	db      *sql.DB
-	pool    chan model.Transaction
-	workers int
-	queue   int
+	db       *sql.DB
+	jobQueue chan<- model.Transaction
 }
 
-func (repo *TransactionsRepository) worker(jobs <-chan model.Transaction) {
-	for transaction := range jobs {
-		if err := repo.ExecuteTransaction(transaction); err != nil {
-			continue
-		}
-	}
-}
-
-func NewTransactionsRepository(db *sql.DB, queue, workers int) TransactionsRepository {
-	if queue < 0 {
-		panic("invalid queue size")
-	}
-	if workers < 1 {
-		panic("number of workers must be >= 1")
-	}
-
-	pool := make(chan model.Transaction, queue)
-
-	repo := TransactionsRepository{db, pool, workers, queue}
-
-	for i := 0; i < workers; i++ {
-		go repo.worker(pool)
-	}
-
+func NewTrsRepository(
+	db *sql.DB,
+	jobQueue chan<- model.Transaction,
+) TransactionsRepository {
+	repo := TransactionsRepository{db, jobQueue}
 	return repo
 }
 
@@ -63,10 +42,10 @@ func (repo *TransactionsRepository) CreateTransaction(
 	}
 
 	select {
-	case repo.pool <- transaction:
+	case repo.jobQueue <- transaction:
 		return nil
 	default:
-		return errors.New("pool full")
+		return errors.New("queue is full or unavailable")
 	}
 }
 

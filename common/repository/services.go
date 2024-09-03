@@ -13,7 +13,7 @@ type ServicesRepository struct {
 	db *sql.DB
 }
 
-func NewServiceRepository(db *sql.DB) ServicesRepository {
+func NewSrvRepository(db *sql.DB) ServicesRepository {
 	return ServicesRepository{db}
 }
 
@@ -104,11 +104,11 @@ func (repo *ServicesRepository) FindAllServices(
 	return services, nil
 }
 
-func (repo *ServicesRepository) SetServiceState(
-	ctx context.Context, id uuid.UUID, state string,
+func (repo *ServicesRepository) UpdateService(
+	ctx context.Context, service model.Service,
 ) error {
 	result, err := repo.db.ExecContext(ctx,
-		"update services set state = $1 where id = $2", state, id)
+		"update services set state = $1 where id = $2", service.State, service.Id)
 	if err != nil {
 		return err
 	}

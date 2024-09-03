@@ -37,3 +37,9 @@ type ReadServiceResponseDTO struct {
 	InitBalance string `json:"init_balance"`
 	Balance     string `json:"balance"`
 }
+
+type UpdateServiceRequestDTO struct {
+	Id          string `json:"id"`
+	State       string `json:"state"`
+	Balance     string `json:"balance"`
+}

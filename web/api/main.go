@@ -8,6 +8,7 @@ import (
 	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/ndfsa/cardboard-bank/common/model"
 	"github.com/ndfsa/cardboard-bank/common/repository"
 	"github.com/ndfsa/cardboard-bank/web/middleware"
 )
@@ -23,14 +24,19 @@ func main() {
 
 	mdf := middleware.NewMiddlewareFactory(db, logger)
 
-	srvhf := NewServicesHandlerFactory(repository.NewServiceRepository(db), mdf)
-	trshf := NewTransactionsHandlerFactory(repository.NewTransactionsRepository(db, 0, 2), mdf)
-	usrhf := NewUsersHandlerFactory(repository.NewUserRepository(db), mdf)
+	srvhf := NewServicesHandlerFactory(repository.NewSrvRepository(db), mdf)
+	usrhf := NewUsersHandlerFactory(repository.NewUsrRepository(db), mdf)
+
+	jobQueue := make(chan model.Transaction, 2)
+	tRepo := repository.NewTrsRepository(db, jobQueue)
+	NewWorkerPool(5, jobQueue, logger)
+	trshf := NewTransactionsHandlerFactory(tRepo, mdf)
 
 	http.Handle("GET /services/{id}", srvhf.ReadSingleService())
 	http.Handle("GET /services", srvhf.ReadMultipleServices())
 	http.Handle("POST /services", srvhf.CreateService())
-	http.Handle("DELETE /services/{id}", srvhf.CancelService())
+	http.Handle("PUT /services", srvhf.UpdateService())
+	http.Handle("DELETE /services/{id}", srvhf.DeleteService())
 
 	http.Handle("GET /users/{id}", usrhf.ReadSingleUser())
 	http.Handle("GET /users", usrhf.ReadMultipleUsers())
@@ -45,4 +51,5 @@ func main() {
 	if err := http.ListenAndServe(":"+os.Getenv("AUTH_PORT"), nil); !errors.Is(err, http.ErrServerClosed) {
 		logger.Fatal(err)
 	}
+	close(jobQueue)
 }

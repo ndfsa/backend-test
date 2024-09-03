@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/ndfsa/cardboard-bank/common/repository"
+	"github.com/ndfsa/cardboard-bank/web/dto"
 	"github.com/ndfsa/cardboard-bank/web/middleware"
 	"github.com/ndfsa/cardboard-bank/web/token"
 )
@@ -26,7 +27,7 @@ func (factory *AuthHandlerFactory) Authenticate() http.Handler {
 		factory.mdf.Logger,
 		factory.mdf.UploadLimit(1000))
 	f := func(w http.ResponseWriter, r *http.Request) error {
-		var req AuthRequestDTO
+		var req dto.AuthRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
@@ -49,7 +50,7 @@ func (factory *AuthHandlerFactory) Authenticate() http.Handler {
 			return err
 		}
 
-		res := AuthResponseDTO{
+		res := dto.AuthResponseDTO{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 		}

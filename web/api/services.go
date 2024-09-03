@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/ndfsa/cardboard-bank/common/model"
 	"github.com/ndfsa/cardboard-bank/common/repository"
 	"github.com/ndfsa/cardboard-bank/web/dto"
 	"github.com/ndfsa/cardboard-bank/web/middleware"
@@ -141,7 +142,40 @@ func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 	return mid(f)
 }
 
-func (factory *ServicesHandlerFactory) CancelService() http.Handler {
+func (factory *ServicesHandlerFactory) UpdateService() http.Handler {
+	mid := middleware.RecoverChain(
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth)
+
+	f := func(w http.ResponseWriter, r *http.Request) error {
+		var req dto.UpdateServiceRequestDTO
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return err
+		}
+
+		serviceId, err := uuid.Parse(req.Id)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return err
+		}
+
+		if err := factory.repo.UpdateService(r.Context(), model.Service{
+			Id:    serviceId,
+			State: req.State,
+		}); err != nil {
+            w.WriteHeader(http.StatusInternalServerError)
+            return err
+		}
+
+		return nil
+	}
+
+	return mid(f)
+}
+
+func (factory *ServicesHandlerFactory) DeleteService() http.Handler {
 	mid := middleware.RecoverChain(
 		factory.mdf.Logger,
 		factory.mdf.UploadLimit(1000),
@@ -159,7 +193,10 @@ func (factory *ServicesHandlerFactory) CancelService() http.Handler {
 			return err
 		}
 
-		if err := factory.repo.SetServiceState(r.Context(), serviceId, "CLD"); err != nil {
+		if err := factory.repo.UpdateService(r.Context(), model.Service{
+			Id:    serviceId,
+			State: model.ServiceStateClosed,
+		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
