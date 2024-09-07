@@ -26,7 +26,7 @@ type CreateUserResponseDTO struct {
 
 type ReadUserResponseDTO struct {
 	Id       string `json:"id"`
-	Role     string `json:"role"`
+	Role     int8   `json:"role"`
 	Username string `json:"username"`
 	Fullname string `json:"fullname"`
 }
@@ -60,4 +60,3 @@ func (data *UpdateUserRequestDTO) Parse() (model.User, error) {
 
 	return user, nil
 }
-

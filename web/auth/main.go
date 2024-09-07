@@ -22,7 +22,7 @@ func main() {
 	}
 
 	repo := repository.NewAuthRepository(db)
-	mdf := middleware.NewMiddlewareFactory(db, logger)
+	mdf := middleware.NewMiddlewareFactory(logger)
 
 	authf := NewAuthHandlerFactory(repo, mdf)
 

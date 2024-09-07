@@ -22,7 +22,7 @@ func main() {
 		return
 	}
 
-	mdf := middleware.NewMiddlewareFactory(db, logger)
+	mdf := middleware.NewMiddlewareFactory(logger)
 
 	srvhf := NewServicesHandlerFactory(repository.NewSrvRepository(db), mdf)
 	usrhf := NewUsersHandlerFactory(repository.NewUsrRepository(db), mdf)
@@ -32,20 +32,24 @@ func main() {
 	NewWorkerPool(5, jobQueue, logger)
 	trshf := NewTransactionsHandlerFactory(tRepo, mdf)
 
+	http.Handle("GET /users/{id}", usrhf.ReadSingleUser())
+	http.Handle("GET /users", usrhf.ReadMultipleUsers())
+	http.Handle("POST /users", usrhf.CreateUser())
+	http.Handle("PUT /users", usrhf.UpdateUser())
+
+    http.Handle("GET /users/{id}/services", srvhf.ReadUserServices())
+
 	http.Handle("GET /services/{id}", srvhf.ReadSingleService())
 	http.Handle("GET /services", srvhf.ReadMultipleServices())
 	http.Handle("POST /services", srvhf.CreateService())
 	http.Handle("PUT /services", srvhf.UpdateService())
 	http.Handle("DELETE /services/{id}", srvhf.DeleteService())
 
-	http.Handle("GET /users/{id}", usrhf.ReadSingleUser())
-	http.Handle("GET /users", usrhf.ReadMultipleUsers())
-	http.Handle("POST /users", usrhf.CreateUser())
-	http.Handle("PUT /users", usrhf.UpdateUser())
+    http.Handle("GET /services/{id}/transactions", trshf.ReadMultipleTransactions())
 
-	http.Handle("POST /transactions", trshf.CreateTransaction())
 	http.Handle("GET /transactions/{id}", trshf.ReadSingleTransaction())
 	http.Handle("GET /transactions", trshf.ReadMultipleTransactions())
+	http.Handle("POST /transactions", trshf.CreateTransaction())
 
 	logger.Println("---Starting API---")
 	if err := http.ListenAndServe(":"+os.Getenv("AUTH_PORT"), nil); !errors.Is(err, http.ErrServerClosed) {

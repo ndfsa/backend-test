@@ -36,7 +36,7 @@ func (factory *ServicesHandlerFactory) CreateService() http.Handler {
 			return err
 		}
 
-		service, err := req.Parse()
+		service, userId, err := req.Parse()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return err
@@ -44,6 +44,11 @@ func (factory *ServicesHandlerFactory) CreateService() http.Handler {
 
 		if err := factory.repo.CreateService(
 			r.Context(), service); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return err
+		}
+
+		if err := factory.repo.LinkServiceToUser(r.Context(), service.Id, userId); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
@@ -99,7 +104,8 @@ func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 	mid := middleware.RecoverChain(
 		factory.mdf.Logger,
 		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
+		factory.mdf.Auth,
+		factory.mdf.Clearence(model.UserRoleTeller))
 	f := func(w http.ResponseWriter, r *http.Request) error {
 		cursorString := r.URL.Query().Get("cursor")
 		var cursor uuid.UUID
@@ -115,6 +121,46 @@ func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 		}
 
 		services, err := factory.repo.FindAllServices(r.Context(), cursor)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return err
+		}
+
+		res := make([]dto.ReadServiceResponseDTO, 0, len(services))
+		for _, service := range services {
+			res = append(res, dto.ReadServiceResponseDTO{
+				Id:          service.Id.String(),
+				Type:        service.Type,
+				State:       service.State,
+				Currency:    service.Currency,
+				InitBalance: service.InitBalance.String(),
+				Balance:     service.Balance.String(),
+			})
+		}
+
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	}
+	return mid(f)
+}
+
+func (factory *ServicesHandlerFactory) ReadUserServices() http.Handler {
+	mid := middleware.RecoverChain(
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) error {
+		userId, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return err
+		}
+
+		services, err := factory.repo.FindUserServices(r.Context(), userId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
@@ -165,8 +211,8 @@ func (factory *ServicesHandlerFactory) UpdateService() http.Handler {
 			Id:    serviceId,
 			State: req.State,
 		}); err != nil {
-            w.WriteHeader(http.StatusInternalServerError)
-            return err
+			w.WriteHeader(http.StatusInternalServerError)
+			return err
 		}
 
 		return nil

@@ -203,3 +203,55 @@ func (repo *TransactionsRepository) FindAllTransactions(
 
 	return transactions, nil
 }
+
+func (repo *TransactionsRepository) FindServiceTransactions(
+	ctx context.Context,
+	serviceId uuid.UUID,
+	cursor uuid.UUID,
+) ([]model.Transaction, error) {
+	var rows *sql.Rows
+	var err error
+
+	if (cursor != uuid.UUID{}) {
+		rows, err = repo.db.QueryContext(ctx,
+			`select id, state, time, currency, amount, source, destination
+            from transactions
+            where source = $1 and id > $2
+            order by id
+            limit 30`, serviceId, cursor)
+	} else {
+		rows, err = repo.db.QueryContext(ctx,
+			`select id, state, time, currency, amount, source, destination
+            from transactions
+            where source = $1
+            order by id
+            limit 30`, serviceId)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	transactions := make([]model.Transaction, 0, 30)
+	for rows.Next() {
+		var transaction model.Transaction
+		if err := rows.Scan(
+			&transaction.Id,
+			&transaction.State,
+			&transaction.Time,
+			&transaction.Currency,
+			&transaction.Amount,
+			&transaction.Source,
+			&transaction.Destination); err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, transaction)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return transactions, nil
+}

@@ -140,3 +140,57 @@ func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handl
 	}
 	return mid(f)
 }
+
+func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handler {
+	mid := middleware.RecoverChain(
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) error {
+		serviceId, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return err
+		}
+
+		cursorString := r.URL.Query().Get("cursor")
+		var cursor uuid.UUID
+		if cursorString != "" {
+			var err error
+			cursor, err = uuid.Parse(cursorString)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return err
+			}
+		} else {
+			cursor = uuid.UUID{}
+		}
+
+		transactions, err := factory.repo.FindServiceTransactions(r.Context(), serviceId, cursor)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return err
+		}
+
+		res := make([]dto.ReadTransactionResponseDTO, 0, len(transactions))
+		for _, transaction := range transactions {
+			res = append(res, dto.ReadTransactionResponseDTO{
+				Id:          transaction.Id.String(),
+				State:       transaction.State,
+				Time:        transaction.Time,
+				Currency:    transaction.Currency,
+				Amount:      transaction.Amount.String(),
+				Source:      transaction.Source.String(),
+				Destination: transaction.Destination.String(),
+			})
+		}
+
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return err
+		}
+
+		return nil
+	}
+	return mid(f)
+}

@@ -39,12 +39,12 @@ func (factory *AuthHandlerFactory) Authenticate() http.Handler {
 			return err
 		}
 
-		accessToken, err := token.GenerateAccessToken(user.Id)
+		accessToken, err := token.GenerateAccessToken(user)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return err
 		}
-		refreshToken, err := token.GenerateRefreshToken(user.Id)
+		refreshToken, err := token.GenerateRefreshToken(user)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return err

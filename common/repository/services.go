@@ -22,7 +22,7 @@ func (repo *ServicesRepository) CreateService(
 ) error {
 	if _, err := repo.db.ExecContext(ctx,
 		`insert into services(id, type, state, permissions, currency, init_balance, balance)
-        values ($1, $2, $3, $4, $5, $6)`,
+        values ($1, $2, $3, $4, $5, $6, $7)`,
 		service.Id,
 		service.Type,
 		service.State,
@@ -30,6 +30,20 @@ func (repo *ServicesRepository) CreateService(
 		service.Currency,
 		service.InitBalance,
 		service.Balance); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (repo *ServicesRepository) LinkServiceToUser(
+	ctx context.Context, serviceId, userId uuid.UUID,
+) error {
+	if _, err := repo.db.ExecContext(ctx,
+		`insert into user_service(user_id, service_id)
+        values ($1, $2)`,
+		userId,
+		serviceId); err != nil {
 		return err
 	}
 
@@ -124,4 +138,45 @@ func (repo *ServicesRepository) UpdateService(
 		return fmt.Errorf("%d rows changed", rows)
 	}
 	return nil
+}
+
+func (repo *ServicesRepository) FindUserServices(
+	ctx context.Context, user uuid.UUID,
+) ([]model.Service, error) {
+	rows, err := repo.db.QueryContext(ctx,
+		`select s.id, s.type, s.state, s.permissions, s.currency, s.init_balance, s.balance
+        from services s
+        join user_service us on us.service_id = s.id
+        where us.user_id = $1
+        order by id
+        limit 10`, user)
+	if err != nil {
+		return nil, err
+	}
+
+	services := make([]model.Service, 0, 10)
+	for rows.Next() {
+		var service model.Service
+		if err := rows.Scan(
+			&service.Id,
+			&service.Type,
+			&service.State,
+			&service.Permissions,
+			&service.Currency,
+			&service.InitBalance,
+			&service.Balance); err != nil {
+			return nil, err
+		}
+
+		services = append(services, service)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return services, nil
 }

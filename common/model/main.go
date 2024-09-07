@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -10,9 +11,9 @@ import (
 
 const (
 	// User role
-	UserRoleRegular       = "USR"
-	UserRoleTeller        = "TEL"
-	UserRoleAdministrator = "ADM"
+	UserRoleRegular       = 0
+	UserRoleTeller        = 1
+	UserRoleAdministrator = math.MaxInt8
 
 	// Currency
 	CurrencyUnitedStatesDollar = "USD"
@@ -46,7 +47,7 @@ const (
 
 type User struct {
 	Id       uuid.UUID
-	Role     string
+	Role     int8
 	Username string
 	Passhash string
 	Fullname string
