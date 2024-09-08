@@ -12,13 +12,12 @@ type WorkerPool struct {
 	repo     repository.TransactionsRepository
 	workers  int
 	queue    int
-	logger   *log.Logger
 }
 
 func (wp *WorkerPool) worker() {
 	for transaction := range wp.jobQueue {
 		if err := wp.repo.ExecuteTransaction(transaction); err != nil {
-			wp.logger.Printf("transaction %sfailed: \n%s\n", transaction.Id.String(), err)
+			log.Printf("transaction %sfailed: \n%s\n", transaction.Id.String(), err)
 		}
 	}
 }
@@ -26,7 +25,6 @@ func (wp *WorkerPool) worker() {
 func NewWorkerPool(
 	workers int,
 	jobQueue <-chan model.Transaction,
-	logger *log.Logger,
 ) WorkerPool {
 	if workers < 1 {
 		panic("number of workers must be >= 1")

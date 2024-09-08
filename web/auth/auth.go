@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/ndfsa/cardboard-bank/common/repository"
@@ -12,54 +13,56 @@ import (
 
 type AuthHandlerFactory struct {
 	repo repository.AuthRepository
-	mdf  middleware.MiddlewareFactory
 }
 
 func NewAuthHandlerFactory(
 	repo repository.AuthRepository,
-	mdf middleware.MiddlewareFactory,
 ) AuthHandlerFactory {
-	return AuthHandlerFactory{repo, mdf}
+	return AuthHandlerFactory{repo}
 }
 
 func (factory *AuthHandlerFactory) Authenticate() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000))
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000))
+	f := func(w http.ResponseWriter, r *http.Request) {
 		var req dto.AuthRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		user, err := factory.repo.Authenticate(r.Context(), req.Username, req.Password)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			return err
+			log.Println(err)
+			return
 		}
 
 		accessToken, err := token.GenerateAccessToken(user)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			return err
+			log.Println(err)
+			return
 		}
 		refreshToken, err := token.GenerateRefreshToken(user)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			return err
+			log.Println(err)
+			return
 		}
 
 		res := dto.AuthResponseDTO{
+			Id:           user.Id.String(),
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 		}
 		if err := json.NewEncoder(w).Encode(res); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }

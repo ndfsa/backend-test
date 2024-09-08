@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -12,67 +13,69 @@ import (
 
 type TransactionsHandlerFactory struct {
 	repo repository.TransactionsRepository
-	mdf  middleware.MiddlewareFactory
 }
 
 func NewTransactionsHandlerFactory(
 	repo repository.TransactionsRepository,
-	mdf middleware.MiddlewareFactory,
 ) TransactionsHandlerFactory {
-	return TransactionsHandlerFactory{repo, mdf}
+	return TransactionsHandlerFactory{repo}
 }
 
 func (factory *TransactionsHandlerFactory) CreateTransaction() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
 		var req dto.CreateTransactionRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return err
+			log.Println(err)
+			return
 		}
 
 		transaction, err := req.Parse()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := factory.repo.CreateTransaction(r.Context(), transaction); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := json.NewEncoder(w).Encode(dto.CreateTransactionResponseDTO{
 			Id: transaction.Id.String(),
 		}); err != nil {
 			w.WriteHeader(http.StatusCreated)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
 
 func (factory *TransactionsHandlerFactory) ReadSingleTransaction() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
 		transactionId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return err
+			log.Println(err)
+			return
 		}
 
 		transaction, err := factory.repo.FindTransaction(r.Context(), transactionId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := json.NewEncoder(w).Encode(dto.ReadTransactionResponseDTO{
@@ -85,20 +88,19 @@ func (factory *TransactionsHandlerFactory) ReadSingleTransaction() http.Handler 
 			Destination: transaction.Destination.String(),
 		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
 
 func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
 		cursorString := r.URL.Query().Get("cursor")
 		var cursor uuid.UUID
 		if cursorString != "" {
@@ -106,7 +108,8 @@ func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handl
 			cursor, err = uuid.Parse(cursorString)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				return err
+				log.Println(err)
+				return
 			}
 		} else {
 			cursor = uuid.UUID{}
@@ -115,7 +118,8 @@ func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handl
 		transactions, err := factory.repo.FindAllTransactions(r.Context(), cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		res := make([]dto.ReadTransactionResponseDTO, 0, len(transactions))
@@ -133,24 +137,24 @@ func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handl
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
 
 func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
 		serviceId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
-			return err
+			log.Println(err)
+			return
 		}
 
 		cursorString := r.URL.Query().Get("cursor")
@@ -160,7 +164,8 @@ func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handle
 			cursor, err = uuid.Parse(cursorString)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				return err
+				log.Println(err)
+				return
 			}
 		} else {
 			cursor = uuid.UUID{}
@@ -169,7 +174,8 @@ func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handle
 		transactions, err := factory.repo.FindServiceTransactions(r.Context(), serviceId, cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		res := make([]dto.ReadTransactionResponseDTO, 0, len(transactions))
@@ -187,10 +193,9 @@ func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handle
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }

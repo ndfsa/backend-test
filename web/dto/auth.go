@@ -6,6 +6,7 @@ type AuthRequestDTO struct {
 }
 
 type AuthResponseDTO struct {
+	Id           string `json:"id"`
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 }

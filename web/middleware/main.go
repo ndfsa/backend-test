@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"slices"
@@ -15,6 +13,7 @@ import (
 
 const (
 	USER_CTX_KEY = "USER"
+	ERR_CTX_KEY  = "USER"
 
 	logReset   = "\033[0m"
 	logRed     = "\033[31m"
@@ -27,93 +26,93 @@ const (
 	logWhite   = "\033[97m"
 )
 
-type MiddlewareFactory struct {
-	log *log.Logger
-}
+type Middleware = func(http.Handler) http.Handler
 
-func NewMiddlewareFactory(logger *log.Logger) MiddlewareFactory {
-	return MiddlewareFactory{logger}
-}
-
-type (
-	ErrHandler        = func(http.ResponseWriter, *http.Request) error
-	RecoverMiddleware = func(ErrHandler) http.Handler
-	ErrMiddleware     = func(ErrHandler) ErrHandler
-)
-
-func (factory *MiddlewareFactory) Auth(next ErrHandler) ErrHandler {
-	return ErrHandler(func(w http.ResponseWriter, r *http.Request) error {
+func Auth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 		userId, err := token.ValidateAccessToken(encodedToken, token.KEY)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			return err
+			log.Println(err)
+			return
 		}
 
 		ctx := context.WithValue(r.Context(), USER_CTX_KEY, userId)
-		return next(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func (factory *MiddlewareFactory) Clearence(level int8) ErrMiddleware {
-	return func(next ErrHandler) ErrHandler {
-		return ErrHandler(func(w http.ResponseWriter, r *http.Request) error {
+func Clearence(level int8) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, ok := r.Context().Value(USER_CTX_KEY).(model.User)
 			if !ok {
 				w.WriteHeader(http.StatusUnauthorized)
-				return errors.New("user not provided")
+				log.Println("user not provided")
+				return
 			}
 			if user.Role < level {
 				w.WriteHeader(http.StatusForbidden)
-				return errors.New("clearence level too low")
+				log.Println("clearence level too low")
+				return
 			}
-			return next(w, r)
+			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func (factory *MiddlewareFactory) UploadLimit(limit int64) ErrMiddleware {
-	return func(next ErrHandler) ErrHandler {
-		return ErrHandler(func(w http.ResponseWriter, r *http.Request) error {
+func Ownership(condition func() bool) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Println("try ownership now")
+			if true {
+				log.Println("fail on purpose")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func UploadLimit(limit int64) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.ContentLength > int64(limit) {
 				w.WriteHeader(http.StatusRequestEntityTooLarge)
-				return errors.New("content length limit exceeded")
+				log.Println("content length limit exceeded")
+				return
 			}
-			return next(w, r)
+			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func (factory *MiddlewareFactory) Logger(next ErrHandler) http.Handler {
+func Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		err := next(w, r)
-		info := fmt.Sprintf("%s %s from %s %d[bytes] %f[s]",
+		next.ServeHTTP(w, r)
+		log.Printf("%s %s from %s %d[bytes] %f[s]",
 			r.Method,
 			r.RequestURI,
 			r.RemoteAddr,
 			r.ContentLength,
 			time.Since(start).Seconds())
-		if err != nil {
-            factory.log.Printf("%s%s err: %s%s\n", logRed, info, err, logReset)
-		} else {
-			factory.log.Println(info)
-		}
 	})
 }
 
-func RecoverChain(
-	recoverMiddleware RecoverMiddleware,
-	errMiddlewares ...ErrMiddleware,
-) RecoverMiddleware {
-	return RecoverMiddleware(func(endpoint ErrHandler) http.Handler {
-		if len(errMiddlewares) == 0 {
-			return recoverMiddleware(endpoint)
+func Chain(middlewares ...Middleware) Middleware {
+	fn := func(endpoint http.Handler) http.Handler {
+		if len(middlewares) == 0 {
+			return endpoint
 		}
+
 		next := endpoint
-		for _, mid := range slices.Backward(errMiddlewares) {
-			next = mid(next)
+		for _, m := range slices.Backward(middlewares) {
+			next = m(next)
 		}
-		return recoverMiddleware(next)
-	})
+
+		return next
+	}
+	return Middleware(fn)
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -14,73 +15,76 @@ import (
 
 type ServicesHandlerFactory struct {
 	repo repository.ServicesRepository
-	mdf  middleware.MiddlewareFactory
 }
 
 func NewServicesHandlerFactory(
 	repo repository.ServicesRepository,
-	mdf middleware.MiddlewareFactory,
 ) ServicesHandlerFactory {
-	return ServicesHandlerFactory{repo, mdf}
+	return ServicesHandlerFactory{repo}
 }
 
 func (factory *ServicesHandlerFactory) CreateService() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
 		var req dto.CreateServiceRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return err
+			log.Println(err)
+			return
 		}
 
 		service, userId, err := req.Parse()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := factory.repo.CreateService(
 			r.Context(), service); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := factory.repo.LinkServiceToUser(r.Context(), service.Id, userId); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := json.NewEncoder(w).Encode(dto.CreateServiceResponseDTO{
 			Id: service.Id.String(),
 		}); err != nil {
 			w.WriteHeader(http.StatusCreated)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
 
 func (factory *ServicesHandlerFactory) ReadSingleService() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
 		serviceId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		service, err := factory.repo.FindService(r.Context(), serviceId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := json.NewEncoder(w).Encode(dto.ReadServiceResponseDTO{
@@ -92,21 +96,20 @@ func (factory *ServicesHandlerFactory) ReadSingleService() http.Handler {
 			Balance:     service.Balance.String(),
 		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
 
 func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth,
-		factory.mdf.Clearence(model.UserRoleTeller))
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth,
+		middleware.Clearence(model.UserRoleTeller))
+	f := func(w http.ResponseWriter, r *http.Request) {
 		cursorString := r.URL.Query().Get("cursor")
 		var cursor uuid.UUID
 		if cursorString != "" {
@@ -114,7 +117,8 @@ func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 			cursor, err = uuid.Parse(cursorString)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				return err
+				log.Println(err)
+				return
 			}
 		} else {
 			cursor = uuid.UUID{}
@@ -123,7 +127,8 @@ func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 		services, err := factory.repo.FindAllServices(r.Context(), cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		res := make([]dto.ReadServiceResponseDTO, 0, len(services))
@@ -140,30 +145,31 @@ func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
 
 func (factory *ServicesHandlerFactory) ReadUserServices() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
 		userId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
-			return err
+			log.Println(err)
+			return
 		}
 
 		services, err := factory.repo.FindUserServices(r.Context(), userId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		res := make([]dto.ReadServiceResponseDTO, 0, len(services))
@@ -180,31 +186,32 @@ func (factory *ServicesHandlerFactory) ReadUserServices() http.Handler {
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
 
 func (factory *ServicesHandlerFactory) UpdateService() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
 
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	f := func(w http.ResponseWriter, r *http.Request) {
 		var req dto.UpdateServiceRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return err
+			log.Println(err)
+			return
 		}
 
 		serviceId, err := uuid.Parse(req.Id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := factory.repo.UpdateService(r.Context(), model.Service{
@@ -212,31 +219,32 @@ func (factory *ServicesHandlerFactory) UpdateService() http.Handler {
 			State: req.State,
 		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
 
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
 
 func (factory *ServicesHandlerFactory) DeleteService() http.Handler {
-	mid := middleware.RecoverChain(
-		factory.mdf.Logger,
-		factory.mdf.UploadLimit(1000),
-		factory.mdf.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) error {
+	mid := middleware.Chain(
+		middleware.Logger,
+		middleware.UploadLimit(1000),
+		middleware.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
 		serviceIdString := r.PathValue("id")
 		if serviceIdString == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			return errors.New("no id provided")
+			log.Println(errors.New("no id provided"))
+			return
 		}
 
 		serviceId, err := uuid.Parse(serviceIdString)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
 
 		if err := factory.repo.UpdateService(r.Context(), model.Service{
@@ -244,10 +252,9 @@ func (factory *ServicesHandlerFactory) DeleteService() http.Handler {
 			State: model.ServiceStateClosed,
 		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			return err
+			log.Println(err)
+			return
 		}
-
-		return nil
 	}
-	return mid(f)
+	return mid(http.HandlerFunc(f))
 }
