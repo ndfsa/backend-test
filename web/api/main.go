@@ -10,6 +10,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ndfsa/cardboard-bank/common/model"
 	"github.com/ndfsa/cardboard-bank/common/repository"
+	"github.com/ndfsa/cardboard-bank/web/middleware"
 )
 
 func main() {
@@ -19,28 +20,35 @@ func main() {
 		return
 	}
 
-	srvhf := NewServicesHandlerFactory(repository.NewSrvRepository(db))
-	usrhf := NewUsersHandlerFactory(repository.NewUsrRepository(db))
-
 	jobQueue := make(chan model.Transaction, 2)
-	tRepo := repository.NewTrsRepository(db, jobQueue)
+
+	usrRepo := repository.NewUsrRepository(db)
+	srvRepo := repository.NewSrvRepository(db)
+	trsRepo := repository.NewTrsRepository(db, jobQueue)
+	ownRepo := repository.NewOwnershipRepository(db)
+
+	mdf := middleware.NewMiddlewareFactory(ownRepo)
+
+	srvhf := NewServicesHandlerFactory(srvRepo, mdf)
+	usrhf := NewUsersHandlerFactory(usrRepo, mdf)
+	trshf := NewTransactionsHandlerFactory(trsRepo, mdf, srvRepo)
+
 	NewWorkerPool(5, jobQueue)
-	trshf := NewTransactionsHandlerFactory(tRepo)
 
 	http.Handle("GET /users/{id}", usrhf.ReadSingleUser())
 	http.Handle("GET /users", usrhf.ReadMultipleUsers())
 	http.Handle("POST /users", usrhf.CreateUser())
-	http.Handle("PUT /users", usrhf.UpdateUser())
+	http.Handle("PUT /users/{id}", usrhf.UpdateUser())
 
-    http.Handle("GET /users/{id}/services", srvhf.ReadUserServices())
+	http.Handle("GET /users/{id}/services", srvhf.ReadUserServices())
 
 	http.Handle("GET /services/{id}", srvhf.ReadSingleService())
 	http.Handle("GET /services", srvhf.ReadMultipleServices())
 	http.Handle("POST /services", srvhf.CreateService())
-	http.Handle("PUT /services", srvhf.UpdateService())
+	http.Handle("PUT /services/{id}", srvhf.UpdateService())
 	http.Handle("DELETE /services/{id}", srvhf.DeleteService())
 
-    http.Handle("GET /services/{id}/transactions", trshf.ReadServiceTransactions())
+	http.Handle("GET /services/{id}/transactions", trshf.ReadServiceTransactions())
 
 	http.Handle("GET /transactions/{id}", trshf.ReadSingleTransaction())
 	http.Handle("GET /transactions", trshf.ReadMultipleTransactions())

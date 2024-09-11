@@ -46,7 +46,6 @@ type ReadServiceResponseDTO struct {
 }
 
 type UpdateServiceRequestDTO struct {
-	Id      string `json:"id"`
 	State   string `json:"state"`
 	Balance string `json:"balance"`
 }

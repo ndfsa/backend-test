@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	// User role
-	UserRoleRegular       = 0
-	UserRoleTeller        = 1
-	UserRoleAdministrator = math.MaxInt8
+	// User clearance level
+	UserClearanceNone          = 0
+	UserClearanceTeller        = 1
+	UserClearanceAdministrator = math.MaxInt8
 
 	// Currency
 	CurrencyUnitedStatesDollar = "USD"
@@ -46,11 +46,11 @@ const (
 )
 
 type User struct {
-	Id       uuid.UUID
-	Role     int8
-	Username string
-	Passhash string
-	Fullname string
+	Id        uuid.UUID
+	Clearance int8
+	Username  string
+	Passhash  string
+	Fullname  string
 }
 
 func (user *User) Validate(password string) error {
@@ -70,9 +70,9 @@ func (user *User) SetPassword(password string) error {
 
 func NewUser(username, fullname, password string) (User, error) {
 	newUser := User{
-		Role:     UserRoleRegular,
-		Username: username,
-		Fullname: fullname,
+		Clearance: UserClearanceNone,
+		Username:  username,
+		Fullname:  fullname,
 	}
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -85,6 +85,10 @@ func NewUser(username, fullname, password string) (User, error) {
 	}
 
 	return newUser, nil
+}
+
+func (user *User) CheckOwnership(userId uuid.UUID) bool {
+	return user.Id == userId
 }
 
 type Service struct {

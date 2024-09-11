@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/ndfsa/cardboard-bank/common/model"
 	"github.com/ndfsa/cardboard-bank/common/repository"
 	"github.com/ndfsa/cardboard-bank/web/dto"
 	"github.com/ndfsa/cardboard-bank/web/middleware"
@@ -14,18 +14,20 @@ import (
 
 type UsersHandlerFactory struct {
 	repo repository.UsersRepository
+	mdf  middleware.MiddlewareFactory
 }
 
 func NewUsersHandlerFactory(
 	repo repository.UsersRepository,
+	mdf middleware.MiddlewareFactory,
 ) UsersHandlerFactory {
-	return UsersHandlerFactory{repo}
+	return UsersHandlerFactory{repo, mdf}
 }
 
 func (factory *UsersHandlerFactory) CreateUser() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000))
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		var req dto.CreateUserRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -60,19 +62,14 @@ func (factory *UsersHandlerFactory) CreateUser() http.Handler {
 
 func (factory *UsersHandlerFactory) ReadSingleUser() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipUsr))
 	f := func(w http.ResponseWriter, r *http.Request) {
-		userIdString := r.PathValue("id")
-		if userIdString == "" {
-			w.WriteHeader(http.StatusNotFound)
-			log.Println(errors.New("no id provided"))
-			return
-		}
-		userId, err := uuid.Parse(userIdString)
+		userId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotFound)
 			log.Println(err)
 			return
 		}
@@ -85,10 +82,10 @@ func (factory *UsersHandlerFactory) ReadSingleUser() http.Handler {
 		}
 
 		if err := json.NewEncoder(w).Encode(dto.ReadUserResponseDTO{
-			Id:       user.Id.String(),
-			Role:     user.Role,
-			Username: user.Username,
-			Fullname: user.Fullname,
+			Id:        user.Id.String(),
+			Clearance: user.Clearance,
+			Username:  user.Username,
+			Fullname:  user.Fullname,
 		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
@@ -100,9 +97,10 @@ func (factory *UsersHandlerFactory) ReadSingleUser() http.Handler {
 
 func (factory *UsersHandlerFactory) ReadMultipleUsers() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.Clearance(model.UserClearanceTeller))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		cursorString := r.URL.Query().Get("cursor")
 		var cursor uuid.UUID
@@ -128,10 +126,10 @@ func (factory *UsersHandlerFactory) ReadMultipleUsers() http.Handler {
 		res := make([]dto.ReadUserResponseDTO, 0, len(users))
 		for _, user := range users {
 			res = append(res, dto.ReadUserResponseDTO{
-				Id:       user.Id.String(),
-				Role:     user.Role,
-				Username: user.Username,
-				Fullname: user.Fullname,
+				Id:        user.Id.String(),
+				Clearance: user.Clearance,
+				Username:  user.Username,
+				Fullname:  user.Fullname,
 			})
 		}
 
@@ -146,10 +144,18 @@ func (factory *UsersHandlerFactory) ReadMultipleUsers() http.Handler {
 
 func (factory *UsersHandlerFactory) UpdateUser() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipUsr))
 	f := func(w http.ResponseWriter, r *http.Request) {
+		userId, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			log.Println(err)
+			return
+		}
+
 		var req dto.UpdateUserRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -164,6 +170,7 @@ func (factory *UsersHandlerFactory) UpdateUser() http.Handler {
 			return
 		}
 
+		user.Id = userId
 		if err := factory.repo.UpdateUser(r.Context(), user); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)

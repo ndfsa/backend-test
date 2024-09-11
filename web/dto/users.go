@@ -25,27 +25,20 @@ type CreateUserResponseDTO struct {
 }
 
 type ReadUserResponseDTO struct {
-	Id       string `json:"id"`
-	Role     int8   `json:"role"`
-	Username string `json:"username"`
-	Fullname string `json:"fullname"`
+	Id        string `json:"id"`
+	Clearance int8   `json:"clearance"`
+	Username  string `json:"username"`
+	Fullname  string `json:"fullname"`
 }
 
 type UpdateUserRequestDTO struct {
-	Id       string `json:"id"`
 	Fullname string `json:"fullname"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
 func (data *UpdateUserRequestDTO) Parse() (model.User, error) {
-	userId, err := uuid.Parse(data.Id)
-	if err != nil {
-		return model.User{}, err
-	}
-
 	user := model.User{
-		Id:       userId,
 		Username: data.Username,
 		Fullname: data.Fullname,
 	}

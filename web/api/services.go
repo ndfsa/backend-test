@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 
@@ -15,19 +14,22 @@ import (
 
 type ServicesHandlerFactory struct {
 	repo repository.ServicesRepository
+	mdf  middleware.MiddlewareFactory
 }
 
 func NewServicesHandlerFactory(
 	repo repository.ServicesRepository,
+	mdf middleware.MiddlewareFactory,
 ) ServicesHandlerFactory {
-	return ServicesHandlerFactory{repo}
+	return ServicesHandlerFactory{repo, mdf}
 }
 
 func (factory *ServicesHandlerFactory) CreateService() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipSrv))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		var req dto.CreateServiceRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -43,14 +45,16 @@ func (factory *ServicesHandlerFactory) CreateService() http.Handler {
 			return
 		}
 
+		ctx := r.Context()
+
 		if err := factory.repo.CreateService(
-			r.Context(), service); err != nil {
+			ctx, service); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return
 		}
 
-		if err := factory.repo.LinkServiceToUser(r.Context(), service.Id, userId); err != nil {
+		if err := factory.repo.LinkServiceToUser(ctx, service.Id, userId); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return
@@ -69,13 +73,14 @@ func (factory *ServicesHandlerFactory) CreateService() http.Handler {
 
 func (factory *ServicesHandlerFactory) ReadSingleService() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipSrv))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		serviceId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotFound)
 			log.Println(err)
 			return
 		}
@@ -105,10 +110,10 @@ func (factory *ServicesHandlerFactory) ReadSingleService() http.Handler {
 
 func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth,
-		middleware.Clearence(model.UserRoleTeller))
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.Clearance(model.UserClearanceTeller))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		cursorString := r.URL.Query().Get("cursor")
 		var cursor uuid.UUID
@@ -152,11 +157,72 @@ func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 	return mid(http.HandlerFunc(f))
 }
 
+func (factory *ServicesHandlerFactory) UpdateService() http.Handler {
+	mid := middleware.Chain(
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipSrv))
+	f := func(w http.ResponseWriter, r *http.Request) {
+		serviceId, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			log.Println(err)
+			return
+		}
+
+		var req dto.UpdateServiceRequestDTO
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
+
+		if err := factory.repo.UpdateService(r.Context(), model.Service{
+			Id:    serviceId,
+			State: req.State,
+		}); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
+			return
+		}
+	}
+
+	return mid(http.HandlerFunc(f))
+}
+
+func (factory *ServicesHandlerFactory) DeleteService() http.Handler {
+	mid := middleware.Chain(
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipSrv))
+	f := func(w http.ResponseWriter, r *http.Request) {
+		serviceId, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			log.Println(err)
+			return
+		}
+
+		if err := factory.repo.UpdateService(r.Context(), model.Service{
+			Id:    serviceId,
+			State: model.ServiceStateClosed,
+		}); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
+			return
+		}
+	}
+	return mid(http.HandlerFunc(f))
+}
+
 func (factory *ServicesHandlerFactory) ReadUserServices() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipUsr))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		userId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
@@ -185,72 +251,6 @@ func (factory *ServicesHandlerFactory) ReadUserServices() http.Handler {
 		}
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
-		}
-	}
-	return mid(http.HandlerFunc(f))
-}
-
-func (factory *ServicesHandlerFactory) UpdateService() http.Handler {
-	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
-
-	f := func(w http.ResponseWriter, r *http.Request) {
-		var req dto.UpdateServiceRequestDTO
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			log.Println(err)
-			return
-		}
-
-		serviceId, err := uuid.Parse(req.Id)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			log.Println(err)
-			return
-		}
-
-		if err := factory.repo.UpdateService(r.Context(), model.Service{
-			Id:    serviceId,
-			State: req.State,
-		}); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
-		}
-	}
-
-	return mid(http.HandlerFunc(f))
-}
-
-func (factory *ServicesHandlerFactory) DeleteService() http.Handler {
-	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
-	f := func(w http.ResponseWriter, r *http.Request) {
-		serviceIdString := r.PathValue("id")
-		if serviceIdString == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			log.Println(errors.New("no id provided"))
-			return
-		}
-
-		serviceId, err := uuid.Parse(serviceIdString)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
-		}
-
-		if err := factory.repo.UpdateService(r.Context(), model.Service{
-			Id:    serviceId,
-			State: model.ServiceStateClosed,
-		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return

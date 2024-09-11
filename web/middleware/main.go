@@ -7,13 +7,15 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/model"
+	"github.com/ndfsa/cardboard-bank/common/repository"
 	"github.com/ndfsa/cardboard-bank/web/token"
 )
 
 const (
-	USER_CTX_KEY = "USER"
-	ERR_CTX_KEY  = "USER"
+	userKey      = "USER"
+	clearanceKey = "CLEARANCE"
 
 	logReset   = "\033[0m"
 	logRed     = "\033[31m"
@@ -24,11 +26,23 @@ const (
 	logCyan    = "\033[36m"
 	logGray    = "\033[37m"
 	logWhite   = "\033[97m"
+
+	OwnershipUsr = 'U'
+	OwnershipSrv = 'S'
+	OwnershipTrs = 'T'
 )
+
+type MiddlewareFactory struct {
+	repo repository.OwnershipRepository
+}
+
+func NewMiddlewareFactory(repo repository.OwnershipRepository) MiddlewareFactory {
+	return MiddlewareFactory{repo}
+}
 
 type Middleware = func(http.Handler) http.Handler
 
-func Auth(next http.Handler) http.Handler {
+func (factory *MiddlewareFactory) Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
 		userId, err := token.ValidateAccessToken(encodedToken, token.KEY)
@@ -38,44 +52,69 @@ func Auth(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), USER_CTX_KEY, userId)
+		ctx := context.WithValue(r.Context(), userKey, userId)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func Clearence(level int8) Middleware {
+func getAuthenticatedUser(ctx context.Context) model.User {
+	return ctx.Value(userKey).(model.User)
+}
+
+func (factory *MiddlewareFactory) Clearance(level int8) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, ok := r.Context().Value(USER_CTX_KEY).(model.User)
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				log.Println("user not provided")
-				return
-			}
-			if user.Role < level {
+			user := getAuthenticatedUser(r.Context())
+			if user.Clearance < level {
 				w.WriteHeader(http.StatusForbidden)
-				log.Println("clearence level too low")
+				log.Println("user does not have sufficient clearance")
 				return
 			}
+
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func Ownership(condition func() bool) Middleware {
+func (factory *MiddlewareFactory) ClearanceOrOwnership(level int8, entity rune) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Println("try ownership now")
-			if true {
-				log.Println("fail on purpose")
-				return
+			user := getAuthenticatedUser(r.Context())
+			if user.Clearance < level {
+				resource, err := uuid.Parse(r.PathValue("id"))
+				if err != nil {
+					w.WriteHeader(http.StatusNotFound)
+					log.Println(err)
+					return
+				}
+
+				ctx := r.Context()
+
+				var cerr error
+				switch entity {
+				case OwnershipUsr:
+					cerr = factory.repo.CheckUserOwnership(resource, user.Id)
+				case OwnershipSrv:
+					cerr = factory.repo.CheckServiceOwnership(ctx, resource, user.Id)
+				case OwnershipTrs:
+					cerr = factory.repo.CheckTransactionOwnership(ctx, resource, user.Id)
+				default:
+					panic("unknown ownership entity")
+				}
+
+				if cerr != nil {
+					w.WriteHeader(http.StatusForbidden)
+					log.Println(cerr)
+					return
+				}
 			}
+
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func UploadLimit(limit int64) Middleware {
+func (factory *MiddlewareFactory) UploadLimit(limit int64) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.ContentLength > int64(limit) {
@@ -88,7 +127,7 @@ func UploadLimit(limit int64) Middleware {
 	}
 }
 
-func Logger(next http.Handler) http.Handler {
+func (factory *MiddlewareFactory) Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)

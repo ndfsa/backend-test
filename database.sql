@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS user_service CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
     id UUID,
-    role SMALLINT,
+    clearance SMALLINT,
     fullname VARCHAR(300) NOT NULL,
     username VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(60) NOT NULL,

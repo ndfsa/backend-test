@@ -13,18 +13,20 @@ import (
 
 type AuthHandlerFactory struct {
 	repo repository.AuthRepository
+	mdf  middleware.MiddlewareFactory
 }
 
 func NewAuthHandlerFactory(
 	repo repository.AuthRepository,
+	mdf middleware.MiddlewareFactory,
 ) AuthHandlerFactory {
-	return AuthHandlerFactory{repo}
+	return AuthHandlerFactory{repo, mdf}
 }
 
 func (factory *AuthHandlerFactory) Authenticate() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000))
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		var req dto.AuthRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -18,10 +18,10 @@ func NewUsrRepository(db *sql.DB) UsersRepository {
 
 func (repo *UsersRepository) CreateUser(ctx context.Context, user model.User) error {
 	if _, err := repo.db.ExecContext(ctx,
-		`insert into users(id, role, username, password, fullname)
+		`insert into users(id, clearance, username, password, fullname)
         values ($1, $2, $3, $4, $5)`,
 		user.Id,
-		user.Role,
+		user.Clearance,
 		user.Username,
 		user.Passhash,
 		user.Fullname); err != nil {
@@ -33,13 +33,13 @@ func (repo *UsersRepository) CreateUser(ctx context.Context, user model.User) er
 
 func (repo *UsersRepository) FindUser(ctx context.Context, userId uuid.UUID) (model.User, error) {
 	row := repo.db.QueryRowContext(ctx,
-		`select id, role, username, password, fullname from users
+		`select id, clearance, username, password, fullname from users
         where id = $1`, userId)
 
 	var user model.User
 	if err := row.Scan(
 		&user.Id,
-		&user.Role,
+		&user.Clearance,
 		&user.Username,
 		&user.Passhash,
 		&user.Fullname); err != nil {
@@ -58,13 +58,13 @@ func (repo *UsersRepository) FindAllUsers(
 
 	if (cursor != uuid.UUID{}) {
 		rows, err = repo.db.QueryContext(ctx,
-			`select id, role, username, password, fullname from users
+			`select id, clearance, username, password, fullname from users
             where id > $1
             order by id
             limit 10`, cursor)
 	} else {
 		rows, err = repo.db.QueryContext(ctx,
-			`select id, role, username, password, fullname from users
+			`select id, clearance, username, password, fullname from users
             order by id
             limit 10`)
 	}
@@ -77,7 +77,7 @@ func (repo *UsersRepository) FindAllUsers(
 		var user model.User
 		if err := rows.Scan(
 			&user.Id,
-			&user.Role,
+			&user.Clearance,
 			&user.Username,
 			&user.Passhash,
 			&user.Fullname); err != nil {

@@ -6,26 +6,31 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/ndfsa/cardboard-bank/common/model"
 	"github.com/ndfsa/cardboard-bank/common/repository"
 	"github.com/ndfsa/cardboard-bank/web/dto"
 	"github.com/ndfsa/cardboard-bank/web/middleware"
 )
 
 type TransactionsHandlerFactory struct {
-	repo repository.TransactionsRepository
+	repo    repository.TransactionsRepository
+	mdf     middleware.MiddlewareFactory
+	srvRepo repository.ServicesRepository
 }
 
 func NewTransactionsHandlerFactory(
 	repo repository.TransactionsRepository,
+	mdf middleware.MiddlewareFactory,
+	srvRepo repository.ServicesRepository,
 ) TransactionsHandlerFactory {
-	return TransactionsHandlerFactory{repo}
+	return TransactionsHandlerFactory{repo, mdf, srvRepo}
 }
 
 func (factory *TransactionsHandlerFactory) CreateTransaction() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth)
 	f := func(w http.ResponseWriter, r *http.Request) {
 		var req dto.CreateTransactionRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -60,13 +65,14 @@ func (factory *TransactionsHandlerFactory) CreateTransaction() http.Handler {
 
 func (factory *TransactionsHandlerFactory) ReadSingleTransaction() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipTrs))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		transactionId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusNotFound)
 			log.Println(err)
 			return
 		}
@@ -97,9 +103,10 @@ func (factory *TransactionsHandlerFactory) ReadSingleTransaction() http.Handler 
 
 func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.Clearance(model.UserClearanceTeller))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		cursorString := r.URL.Query().Get("cursor")
 		var cursor uuid.UUID
@@ -146,9 +153,10 @@ func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handl
 
 func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handler {
 	mid := middleware.Chain(
-		middleware.Logger,
-		middleware.UploadLimit(1000),
-		middleware.Auth)
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth,
+		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipSrv))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		serviceId, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {

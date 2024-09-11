@@ -19,13 +19,14 @@ func (repo *AuthRepository) Authenticate(
 	ctx context.Context, username, password string,
 ) (model.User, error) {
 	row := repo.db.QueryRowContext(ctx,
-		"select u.id, u.role, u.username, u.password, u.fullname from users u where u.username = $1",
+		`select u.id, u.clearance, u.username, u.password, u.fullname from users u
+        where u.username = $1`,
 		username)
 
 	var user model.User
 	if err := row.Scan(
 		&user.Id,
-		&user.Role,
+		&user.Clearance,
 		&user.Username,
 		&user.Passhash,
 		&user.Fullname); err != nil {
