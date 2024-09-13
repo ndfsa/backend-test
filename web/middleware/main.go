@@ -45,7 +45,7 @@ type Middleware = func(http.Handler) http.Handler
 func (factory *MiddlewareFactory) Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		encodedToken := r.Header.Get("Authorization")
-		userId, err := token.ValidateAccessToken(encodedToken, token.KEY)
+		userId, err := token.ValidateAccessToken(encodedToken)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			log.Println(err)
@@ -57,14 +57,14 @@ func (factory *MiddlewareFactory) Auth(next http.Handler) http.Handler {
 	})
 }
 
-func getAuthenticatedUser(ctx context.Context) model.User {
+func GetAuthenticatedUser(ctx context.Context) model.User {
 	return ctx.Value(userKey).(model.User)
 }
 
 func (factory *MiddlewareFactory) Clearance(level int8) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user := getAuthenticatedUser(r.Context())
+			user := GetAuthenticatedUser(r.Context())
 			if user.Clearance < level {
 				w.WriteHeader(http.StatusForbidden)
 				log.Println("user does not have sufficient clearance")
@@ -79,7 +79,7 @@ func (factory *MiddlewareFactory) Clearance(level int8) Middleware {
 func (factory *MiddlewareFactory) ClearanceOrOwnership(level int8, entity rune) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user := getAuthenticatedUser(r.Context())
+			user := GetAuthenticatedUser(r.Context())
 			if user.Clearance < level {
 				resource, err := uuid.Parse(r.PathValue("id"))
 				if err != nil {

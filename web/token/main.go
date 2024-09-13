@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"aidanwoods.dev/go-paseto"
-	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/model"
 )
 
@@ -17,33 +16,7 @@ const (
 	KEY         = "2bbb515c1311dd69a609a0d553dc7ac1ac8eadc2b22daa9aaa99483d2f381374"
 )
 
-func GetUserId(bearerToken string) (uuid.UUID, error) {
-	_, encodedToken, _ := strings.Cut(bearerToken, " ")
-	parser := paseto.NewParserWithoutExpiryCheck()
-	key, err := paseto.V4SymmetricKeyFromHex(KEY)
-	if err != nil {
-		return uuid.UUID{}, err
-	}
-
-	token, err := parser.ParseV4Local(key, encodedToken, nil)
-	if err != nil {
-		return uuid.UUID{}, err
-	}
-
-	encodedId, err := token.GetString(USER_KEY)
-	if err != nil {
-		return uuid.UUID{}, err
-	}
-
-	id, err := uuid.Parse(encodedId)
-	if err != nil {
-		return uuid.UUID{}, err
-	}
-
-	return id, nil
-}
-
-func ValidateAccessToken(bearerToken string, hexKey string) (model.User, error) {
+func ValidateAccessToken(bearerToken string) (model.User, error) {
 	_, encodedToken, found := strings.Cut(bearerToken, " ")
 	if !found {
 		return model.User{}, errors.New("invalid bearer token")
@@ -51,7 +24,7 @@ func ValidateAccessToken(bearerToken string, hexKey string) (model.User, error) 
 
 	parser := paseto.NewParserForValidNow()
 
-	key, err := paseto.V4SymmetricKeyFromHex(hexKey)
+	key, err := paseto.V4SymmetricKeyFromHex(KEY)
 	if err != nil {
 		return model.User{}, err
 	}

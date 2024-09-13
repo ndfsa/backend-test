@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/model"
 )
 

@@ -67,13 +67,7 @@ func (factory *UsersHandlerFactory) ReadSingleUser() http.Handler {
 		factory.mdf.Auth,
 		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipUsr))
 	f := func(w http.ResponseWriter, r *http.Request) {
-		userId, err := uuid.Parse(r.PathValue("id"))
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			log.Println(err)
-			return
-		}
-
+		userId, _ := uuid.Parse(r.PathValue("id"))
 		user, err := factory.repo.FindUser(r.Context(), userId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -149,13 +143,7 @@ func (factory *UsersHandlerFactory) UpdateUser() http.Handler {
 		factory.mdf.Auth,
 		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipUsr))
 	f := func(w http.ResponseWriter, r *http.Request) {
-		userId, err := uuid.Parse(r.PathValue("id"))
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			log.Println(err)
-			return
-		}
-
+		userId, _ := uuid.Parse(r.PathValue("id"))
 		var req dto.UpdateUserRequestDTO
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

@@ -41,6 +41,8 @@ func main() {
 	http.Handle("PUT /users/{id}", usrhf.UpdateUser())
 
 	http.Handle("GET /users/{id}/services", srvhf.ReadUserServices())
+	http.Handle("POST /users/{id}/services", srvhf.CreateUserService())
+	http.Handle("PUT /users/{id}/services", srvhf.UpdateUserService())
 
 	http.Handle("GET /services/{id}", srvhf.ReadSingleService())
 	http.Handle("GET /services", srvhf.ReadMultipleServices())

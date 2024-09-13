@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ndfsa/cardboard-bank/common/repository"
+	"github.com/ndfsa/cardboard-bank/web/middleware"
 )
 
 func main() {
@@ -18,11 +19,14 @@ func main() {
 		return
 	}
 
-	repo := repository.NewAuthRepository(db)
+	authRepo := repository.NewAuthRepository(db)
+    ownRepo := repository.NewOwnershipRepository(db)
 
-	authf := NewAuthHandlerFactory(repo)
+    mdf := middleware.NewMiddlewareFactory(ownRepo)
+	authf := NewAuthHandlerFactory(authRepo, mdf)
 
 	http.Handle("POST /auth", authf.Authenticate())
+	http.Handle("GET /refresh", authf.RefreshToken())
 
 	log.Println("---Starting AUTH---")
 	if err := http.ListenAndServe(

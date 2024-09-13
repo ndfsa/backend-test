@@ -55,13 +55,47 @@ func (factory *AuthHandlerFactory) Authenticate() http.Handler {
 			return
 		}
 
-		res := dto.AuthResponseDTO{
+		if err := json.NewEncoder(w).Encode(dto.AuthResponseDTO{
 			Id:           user.Id.String(),
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
-		}
-		if err := json.NewEncoder(w).Encode(res); err != nil {
+		}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
+			return
+		}
+	}
+	return mid(http.HandlerFunc(f))
+}
+
+func (factory *AuthHandlerFactory) RefreshToken() http.Handler {
+	mid := middleware.Chain(
+		factory.mdf.Logger,
+		factory.mdf.UploadLimit(1000),
+		factory.mdf.Auth)
+	f := func(w http.ResponseWriter, r *http.Request) {
+		user := middleware.GetAuthenticatedUser(r.Context())
+
+		accessToken, err := token.GenerateAccessToken(user)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+			return
+		}
+
+		refreshToken, err := token.GenerateRefreshToken(user)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Println(err)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(dto.AuthResponseDTO{
+			Id:           user.Id.String(),
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		}); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
 			log.Println(err)
 			return
 		}

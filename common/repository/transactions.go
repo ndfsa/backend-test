@@ -80,6 +80,10 @@ func (repo *TransactionsRepository) ExecuteTransaction(
 		return err
 	}
 
+	if srcService.State != model.ServiceStateActive {
+		return errors.New("source is not active")
+	}
+
 	if err := srcService.Debit(transaction.Amount); err != nil {
 		return err
 	}
@@ -99,6 +103,10 @@ func (repo *TransactionsRepository) ExecuteTransaction(
 		&dstService.Balance,
 	); err != nil {
 		return err
+	}
+
+	if dstService.State != model.ServiceStateActive {
+		return errors.New("destination is not active")
 	}
 
 	if err := dstService.Credit(transaction.Amount); err != nil {

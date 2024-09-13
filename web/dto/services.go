@@ -1,35 +1,28 @@
 package dto
 
 import (
-	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/model"
 	"github.com/shopspring/decimal"
 )
 
 type CreateServiceRequestDTO struct {
-	Owner       string `json:"user_id"`
 	Type        string `json:"type"`
 	Currency    string `json:"currency"`
 	InitBalance string `json:"init_balance"`
 }
 
-func (dto *CreateServiceRequestDTO) Parse() (model.Service, uuid.UUID, error) {
+func (dto *CreateServiceRequestDTO) Parse() (model.Service, error) {
 	initBalance, err := decimal.NewFromString(dto.InitBalance)
 	if err != nil {
-		return model.Service{}, uuid.UUID{}, err
-	}
-
-	owner, err := uuid.Parse(dto.Owner)
-	if err != nil {
-		return model.Service{}, uuid.UUID{}, err
+		return model.Service{}, err
 	}
 
 	service, err := model.NewService(dto.Type, dto.Currency, initBalance)
 	if err != nil {
-		return model.Service{}, uuid.UUID{}, err
+		return model.Service{}, err
 	}
 
-	return service, owner, nil
+	return service, nil
 }
 
 type CreateServiceResponseDTO struct {
@@ -48,4 +41,8 @@ type ReadServiceResponseDTO struct {
 type UpdateServiceRequestDTO struct {
 	State   string `json:"state"`
 	Balance string `json:"balance"`
+}
+
+type UpdateUserServiceDTO struct {
+	Id string `json:"id"`
 }

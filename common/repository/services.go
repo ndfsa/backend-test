@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -149,13 +148,12 @@ func (repo *ServicesRepository) FindUserServices(
         from services s
         join user_service us on us.service_id = s.id
         where us.user_id = $1
-        order by id
-        limit 10`, user)
+        order by id`, user)
 	if err != nil {
 		return nil, err
 	}
 
-	services := make([]model.Service, 0, 10)
+	services := make([]model.Service, 0)
 	for rows.Next() {
 		var service model.Service
 		if err := rows.Scan(

@@ -158,13 +158,7 @@ func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handle
 		factory.mdf.Auth,
 		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipSrv))
 	f := func(w http.ResponseWriter, r *http.Request) {
-		serviceId, err := uuid.Parse(r.PathValue("id"))
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			log.Println(err)
-			return
-		}
-
+		serviceId, _ := uuid.Parse(r.PathValue("id"))
 		cursorString := r.URL.Query().Get("cursor")
 		var cursor uuid.UUID
 		if cursorString != "" {
