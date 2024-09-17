@@ -122,16 +122,23 @@ func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handl
 			cursor = uuid.UUID{}
 		}
 
-		transactions, err := factory.repo.FindAllTransactions(r.Context(), cursor)
+		transactionsIt, err := factory.repo.FindAllTransactions(r.Context(), cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return
 		}
 
-		res := make([]dto.ReadTransactionResponseDTO, 0, len(transactions))
-		for _, transaction := range transactions {
-			res = append(res, dto.ReadTransactionResponseDTO{
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "")
+		for transaction, err := range transactionsIt {
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
+
+			if err := encoder.Encode(dto.ReadTransactionResponseDTO{
 				Id:          transaction.Id.String(),
 				State:       transaction.State,
 				Time:        transaction.Time,
@@ -139,13 +146,11 @@ func (factory *TransactionsHandlerFactory) ReadMultipleTransactions() http.Handl
 				Amount:      transaction.Amount.String(),
 				Source:      transaction.Source.String(),
 				Destination: transaction.Destination.String(),
-			})
-		}
-
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+			}); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
 		}
 	}
 	return mid(http.HandlerFunc(f))
@@ -173,16 +178,23 @@ func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handle
 			cursor = uuid.UUID{}
 		}
 
-		transactions, err := factory.repo.FindServiceTransactions(r.Context(), serviceId, cursor)
+		transactionsIt, err := factory.repo.FindServiceTransactions(r.Context(), serviceId, cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return
 		}
 
-		res := make([]dto.ReadTransactionResponseDTO, 0, len(transactions))
-		for _, transaction := range transactions {
-			res = append(res, dto.ReadTransactionResponseDTO{
+        encoder := json.NewEncoder(w)
+        encoder.SetIndent("", "")
+		for transaction, err := range transactionsIt {
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
+
+			if err := encoder.Encode(dto.ReadTransactionResponseDTO{
 				Id:          transaction.Id.String(),
 				State:       transaction.State,
 				Time:        transaction.Time,
@@ -190,13 +202,11 @@ func (factory *TransactionsHandlerFactory) ReadServiceTransactions() http.Handle
 				Amount:      transaction.Amount.String(),
 				Source:      transaction.Source.String(),
 				Destination: transaction.Destination.String(),
-			})
-		}
-
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+			}); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
 		}
 	}
 	return mid(http.HandlerFunc(f))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"iter"
 
 	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/model"
@@ -74,7 +75,7 @@ func (repo *ServicesRepository) FindService(
 
 func (repo *ServicesRepository) FindAllServices(
 	ctx context.Context, cursor uuid.UUID,
-) ([]model.Service, error) {
+) (iter.Seq2[model.Service, error], error) {
 	var rows *sql.Rows
 	var err error
 
@@ -94,31 +95,26 @@ func (repo *ServicesRepository) FindAllServices(
 		return nil, err
 	}
 
-	services := make([]model.Service, 0, 10)
-	for rows.Next() {
-		var service model.Service
-		if err := rows.Scan(
-			&service.Id,
-			&service.Type,
-			&service.State,
-			&service.Permissions,
-			&service.Currency,
-			&service.InitBalance,
-			&service.Balance); err != nil {
-			return nil, err
+	it := func(yield func(model.Service, error) bool) {
+		defer rows.Close()
+		for rows.Next() {
+			var service model.Service
+			err := rows.Scan(
+				&service.Id,
+				&service.Type,
+				&service.State,
+				&service.Permissions,
+				&service.Currency,
+				&service.InitBalance,
+				&service.Balance)
+
+			if !yield(service, err) {
+				return
+			}
 		}
-
-		services = append(services, service)
 	}
 
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return services, nil
+	return it, nil
 }
 
 func (repo *ServicesRepository) UpdateService(
@@ -142,7 +138,7 @@ func (repo *ServicesRepository) UpdateService(
 
 func (repo *ServicesRepository) FindUserServices(
 	ctx context.Context, user uuid.UUID,
-) ([]model.Service, error) {
+) (iter.Seq2[model.Service, error], error) {
 	rows, err := repo.db.QueryContext(ctx,
 		`select s.id, s.type, s.state, s.permissions, s.currency, s.init_balance, s.balance
         from services s
@@ -153,29 +149,24 @@ func (repo *ServicesRepository) FindUserServices(
 		return nil, err
 	}
 
-	services := make([]model.Service, 0)
-	for rows.Next() {
-		var service model.Service
-		if err := rows.Scan(
-			&service.Id,
-			&service.Type,
-			&service.State,
-			&service.Permissions,
-			&service.Currency,
-			&service.InitBalance,
-			&service.Balance); err != nil {
-			return nil, err
+	it := func(yield func(model.Service, error) bool) {
+		defer rows.Close()
+		for rows.Next() {
+			var service model.Service
+			err := rows.Scan(
+				&service.Id,
+				&service.Type,
+				&service.State,
+				&service.Permissions,
+				&service.Currency,
+				&service.InitBalance,
+				&service.Balance)
+
+			if !yield(service, err) {
+				return
+			}
 		}
-
-		services = append(services, service)
 	}
 
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return services, nil
+	return it, nil
 }

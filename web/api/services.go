@@ -72,27 +72,27 @@ func (factory *ServicesHandlerFactory) UpdateUserService() http.Handler {
 		factory.mdf.Auth,
 		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipUsr))
 	f := func(w http.ResponseWriter, r *http.Request) {
-        userId, _ := uuid.Parse(r.PathValue("id"))
-        var req dto.UpdateUserServiceDTO
-        if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-            w.WriteHeader(http.StatusBadRequest)
-            log.Println(err)
-            return
-        }
+		userId, _ := uuid.Parse(r.PathValue("id"))
+		var req dto.UpdateUserServiceDTO
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
 
-        serviceId, err := uuid.Parse(req.Id)
-        if err != nil {
-            w.WriteHeader(http.StatusBadRequest)
-            log.Println(err)
-            return
-        }
+		serviceId, err := uuid.Parse(req.Id)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
 
-        if err := factory.repo.LinkServiceToUser(r.Context(), serviceId, userId); err != nil {
-            w.WriteHeader(http.StatusInternalServerError)
-            log.Println(err)
-            return
-        }
-    }
+		if err := factory.repo.LinkServiceToUser(r.Context(), serviceId, userId); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println(err)
+			return
+		}
+	}
 	return mid(http.HandlerFunc(f))
 }
 
@@ -148,29 +148,33 @@ func (factory *ServicesHandlerFactory) ReadMultipleServices() http.Handler {
 			cursor = uuid.UUID{}
 		}
 
-		services, err := factory.repo.FindAllServices(r.Context(), cursor)
+		servicesIt, err := factory.repo.FindAllServices(r.Context(), cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return
 		}
 
-		res := make([]dto.ReadServiceResponseDTO, 0, len(services))
-		for _, service := range services {
-			res = append(res, dto.ReadServiceResponseDTO{
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "")
+		for service, err := range servicesIt {
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
+			if err := encoder.Encode(dto.ReadServiceResponseDTO{
 				Id:          service.Id.String(),
 				Type:        service.Type,
 				State:       service.State,
 				Currency:    service.Currency,
 				InitBalance: service.InitBalance.String(),
 				Balance:     service.Balance.String(),
-			})
-		}
-
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+			}); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
 		}
 	}
 	return mid(http.HandlerFunc(f))
@@ -232,29 +236,34 @@ func (factory *ServicesHandlerFactory) ReadUserServices() http.Handler {
 		factory.mdf.ClearanceOrOwnership(model.UserClearanceTeller, middleware.OwnershipUsr))
 	f := func(w http.ResponseWriter, r *http.Request) {
 		userId, _ := uuid.Parse(r.PathValue("id"))
-		services, err := factory.repo.FindUserServices(r.Context(), userId)
+		servicesIt, err := factory.repo.FindUserServices(r.Context(), userId)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return
 		}
 
-		res := make([]dto.ReadServiceResponseDTO, 0, len(services))
-		for _, service := range services {
-			res = append(res, dto.ReadServiceResponseDTO{
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "")
+		for service, err := range servicesIt {
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
+
+			if err := encoder.Encode(dto.ReadServiceResponseDTO{
 				Id:          service.Id.String(),
 				Type:        service.Type,
 				State:       service.State,
 				Currency:    service.Currency,
 				InitBalance: service.InitBalance.String(),
 				Balance:     service.Balance.String(),
-			})
-		}
-
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+			}); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
 		}
 	}
 	return mid(http.HandlerFunc(f))

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"iter"
 
 	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/model"
@@ -52,7 +53,7 @@ func (repo *UsersRepository) FindUser(ctx context.Context, userId uuid.UUID) (mo
 func (repo *UsersRepository) FindAllUsers(
 	ctx context.Context,
 	cursor uuid.UUID,
-) ([]model.User, error) {
+) (iter.Seq2[model.User, error], error) {
 	var rows *sql.Rows
 	var err error
 
@@ -72,28 +73,24 @@ func (repo *UsersRepository) FindAllUsers(
 		return nil, err
 	}
 
-	users := make([]model.User, 0, 10)
-	for rows.Next() {
-		var user model.User
-		if err := rows.Scan(
-			&user.Id,
-			&user.Clearance,
-			&user.Username,
-			&user.Passhash,
-			&user.Fullname); err != nil {
-			return nil, err
+    it := func(yield func(model.User, error) bool) {
+        defer rows.Close()
+		for rows.Next() {
+			var user model.User
+			err := rows.Scan(
+				&user.Id,
+				&user.Clearance,
+				&user.Username,
+				&user.Passhash,
+				&user.Fullname)
+
+			if !yield(user, err) {
+                return
+			}
 		}
-		users = append(users, user)
 	}
 
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return users, nil
+	return it, nil
 }
 
 func (repo *UsersRepository) UpdateUser(ctx context.Context, user model.User) error {

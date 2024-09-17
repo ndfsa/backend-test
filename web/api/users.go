@@ -110,27 +110,32 @@ func (factory *UsersHandlerFactory) ReadMultipleUsers() http.Handler {
 			cursor = uuid.UUID{}
 		}
 
-		users, err := factory.repo.FindAllUsers(r.Context(), cursor)
+		userIt, err := factory.repo.FindAllUsers(r.Context(), cursor)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Println(err)
 			return
 		}
 
-		res := make([]dto.ReadUserResponseDTO, 0, len(users))
-		for _, user := range users {
-			res = append(res, dto.ReadUserResponseDTO{
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "")
+		for user, err := range userIt {
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
+
+			if err := encoder.Encode(dto.ReadUserResponseDTO{
 				Id:        user.Id.String(),
 				Clearance: user.Clearance,
 				Username:  user.Username,
 				Fullname:  user.Fullname,
-			})
-		}
-
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
-			return
+			}); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
 		}
 	}
 	return mid(http.HandlerFunc(f))

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"iter"
 
 	"github.com/google/uuid"
 	"github.com/ndfsa/cardboard-bank/common/model"
@@ -166,7 +167,7 @@ func (repo *TransactionsRepository) FindTransaction(
 func (repo *TransactionsRepository) FindAllTransactions(
 	ctx context.Context,
 	cursor uuid.UUID,
-) ([]model.Transaction, error) {
+) (iter.Seq2[model.Transaction, error], error) {
 	var rows *sql.Rows
 	var err error
 
@@ -187,36 +188,33 @@ func (repo *TransactionsRepository) FindAllTransactions(
 		return nil, err
 	}
 
-	transactions := make([]model.Transaction, 0, 10)
-	for rows.Next() {
-		var transaction model.Transaction
-		if err := rows.Scan(
-			&transaction.Id,
-			&transaction.State,
-			&transaction.Time,
-			&transaction.Currency,
-			&transaction.Amount,
-			&transaction.Source,
-			&transaction.Destination); err != nil {
-			return nil, err
+	it := func(yield func(model.Transaction, error) bool) {
+		defer rows.Close()
+		for rows.Next() {
+			var transaction model.Transaction
+			err := rows.Scan(
+				&transaction.Id,
+				&transaction.State,
+				&transaction.Time,
+				&transaction.Currency,
+				&transaction.Amount,
+				&transaction.Source,
+				&transaction.Destination)
+
+			if !yield(transaction, err) {
+				return
+			}
 		}
-		transactions = append(transactions, transaction)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
-	return transactions, nil
+	return it, nil
 }
 
 func (repo *TransactionsRepository) FindServiceTransactions(
 	ctx context.Context,
 	serviceId uuid.UUID,
 	cursor uuid.UUID,
-) ([]model.Transaction, error) {
+) (iter.Seq2[model.Transaction, error], error) {
 	var rows *sql.Rows
 	var err error
 
@@ -239,27 +237,26 @@ func (repo *TransactionsRepository) FindServiceTransactions(
 		return nil, err
 	}
 
-	transactions := make([]model.Transaction, 0, 30)
-	for rows.Next() {
-		var transaction model.Transaction
-		if err := rows.Scan(
-			&transaction.Id,
-			&transaction.State,
-			&transaction.Time,
-			&transaction.Currency,
-			&transaction.Amount,
-			&transaction.Source,
-			&transaction.Destination); err != nil {
-			return nil, err
+	it := func(yield func(model.Transaction, error) bool) {
+		defer rows.Close()
+		for rows.Next() {
+			var transaction model.Transaction
+			err := rows.Scan(
+				&transaction.Id,
+				&transaction.State,
+				&transaction.Time,
+				&transaction.Currency,
+				&transaction.Amount,
+				&transaction.Source,
+				&transaction.Destination)
+
+			if !yield(transaction, err) {
+				return
+			}
 		}
-		transactions = append(transactions, transaction)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+
+		rows.Close()
 	}
 
-	return transactions, nil
+	return it, nil
 }
