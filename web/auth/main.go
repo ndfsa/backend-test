@@ -20,13 +20,15 @@ func main() {
 	}
 
 	authRepo := repository.NewAuthRepository(db)
-    ownRepo := repository.NewOwnershipRepository(db)
+	ownRepo := repository.NewOwnershipRepository(db)
 
-    mdf := middleware.NewMiddlewareFactory(ownRepo)
+	mdf := middleware.NewMiddlewareFactory(ownRepo)
 	authf := NewAuthHandlerFactory(authRepo, mdf)
 
 	http.Handle("POST /auth", authf.Authenticate())
 	http.Handle("GET /refresh", authf.RefreshToken())
+
+	http.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {})
 
 	log.Println("---Starting AUTH---")
 	if err := http.ListenAndServe(

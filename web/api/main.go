@@ -56,6 +56,8 @@ func main() {
 	http.Handle("GET /transactions", trshf.ReadMultipleTransactions())
 	http.Handle("POST /transactions", trshf.CreateTransaction())
 
+	http.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {})
+
 	log.Println("---Starting API---")
 	if err := http.ListenAndServe(":"+os.Getenv("AUTH_PORT"), nil); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)

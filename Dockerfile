@@ -1,5 +1,5 @@
 # database container
-FROM postgres:alpine as database
+FROM postgres:alpine AS database
 # Set environment variables
 ENV POSTGRES_USER=postgres
 ENV POSTGRES_DB=cardboard_bank
@@ -9,6 +9,20 @@ EXPOSE 5432
 
 # Copy script to container
 COPY ./database.sql /docker-entrypoint-initdb.d/
+
+# prometheus metrics
+FROM prom/prometheus AS prometheus
+COPY ./prometheus.yaml /etc/prometheus/prometheus.yml
+EXPOSE 9090
+
+# grafana analytics
+FROM grafana/grafana AS grafana
+COPY ./datasource.yml /etc/grafana/provisioning/datasources/datasource.yml
+EXPOSE 3000
+
+# cadvisor analytics
+FROM gcr.io/cadvisor/cadvisor:latest AS cadvisor
+EXPOSE 8080
 
 # build stage container
 FROM golang:alpine AS build
