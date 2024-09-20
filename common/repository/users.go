@@ -54,27 +54,24 @@ func (repo *UsersRepository) FindAllUsers(
 	ctx context.Context,
 	cursor uuid.UUID,
 ) (iter.Seq2[model.User, error], error) {
-	var rows *sql.Rows
-	var err error
+	query := "select id, clearance, username, password, fullname from users"
+	params := make([]interface{}, 0, 1)
 
 	if (cursor != uuid.UUID{}) {
-		rows, err = repo.db.QueryContext(ctx,
-			`select id, clearance, username, password, fullname from users
-            where id > $1
-            order by id
-            limit 10`, cursor)
-	} else {
-		rows, err = repo.db.QueryContext(ctx,
-			`select id, clearance, username, password, fullname from users
-            order by id
-            limit 10`)
+		query += " where id > $1"
+        params = append(params, cursor)
 	}
+
+	query += " order by id"
+	query += " limit 10"
+
+	rows, err := repo.db.QueryContext(ctx, query, params...)
 	if err != nil {
 		return nil, err
 	}
 
-    it := func(yield func(model.User, error) bool) {
-        defer rows.Close()
+	it := func(yield func(model.User, error) bool) {
+		defer rows.Close()
 		for rows.Next() {
 			var user model.User
 			err := rows.Scan(
@@ -85,7 +82,7 @@ func (repo *UsersRepository) FindAllUsers(
 				&user.Fullname)
 
 			if !yield(user, err) {
-                return
+				return
 			}
 		}
 	}

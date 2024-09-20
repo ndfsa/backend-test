@@ -76,21 +76,18 @@ func (repo *ServicesRepository) FindService(
 func (repo *ServicesRepository) FindAllServices(
 	ctx context.Context, cursor uuid.UUID,
 ) (iter.Seq2[model.Service, error], error) {
-	var rows *sql.Rows
-	var err error
+    query := "select id, type, state, permissions, currency, init_balance, balance from services"
+    params := make([]interface{}, 0, 1)
 
 	if (cursor != uuid.UUID{}) {
-		rows, err = repo.db.QueryContext(ctx,
-			`select id, type, state, permissions, currency, init_balance, balance from services
-            where id > $1
-            order by id
-            limit 10`, cursor)
-	} else {
-		rows, err = repo.db.QueryContext(ctx,
-			`select id, type, state, permissions, currency, init_balance, balance from services
-            order by id
-            limit 10`)
+		query += "where id > $1"
+        params = append(params, cursor)
 	}
+
+    query += " order by id"
+    query += " limit 10"
+
+    rows, err := repo.db.QueryContext(ctx, query, params...)
 	if err != nil {
 		return nil, err
 	}

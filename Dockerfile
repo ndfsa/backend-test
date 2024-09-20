@@ -5,24 +5,14 @@ ENV POSTGRES_USER=postgres
 ENV POSTGRES_DB=cardboard_bank
 ENV POSTGRES_PASSWORD=root
 RUN [[ -d "/docker-entrypoint-initdb.d" ]] || mkdir /docker-entrypoint-initdb.d ;
-EXPOSE 5432
-
 # Copy script to container
 COPY ./database.sql /docker-entrypoint-initdb.d/
+EXPOSE 5432
 
-# prometheus metrics
-FROM prom/prometheus AS prometheus
-COPY ./prometheus.yaml /etc/prometheus/prometheus.yml
-EXPOSE 9090
-
-# grafana analytics
-FROM grafana/grafana AS grafana
-COPY ./datasource.yml /etc/grafana/provisioning/datasources/datasource.yml
-EXPOSE 3000
-
-# cadvisor analytics
-FROM gcr.io/cadvisor/cadvisor:latest AS cadvisor
-EXPOSE 8080
+# nginx
+FROM nginx:alpine AS gateway
+COPY ./nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
 
 # build stage container
 FROM golang:alpine AS build
@@ -43,8 +33,23 @@ FROM alpine AS authProd
 COPY --from=build /bin/auth /bin/auth
 EXPOSE 80
 ENTRYPOINT /bin/auth ;
+
 # api container
 FROM alpine AS apiProd
 COPY --from=build /bin/api /bin/api
 EXPOSE 80
 ENTRYPOINT /bin/api ;
+
+# prometheus metrics
+FROM prom/prometheus AS prometheus
+COPY ./prometheus.yaml /etc/prometheus/prometheus.yml
+EXPOSE 9090
+
+# grafana analytics
+FROM grafana/grafana AS grafana
+COPY ./datasource.yml /etc/grafana/provisioning/datasources/datasource.yml
+EXPOSE 3000
+
+# cadvisor analytics
+FROM gcr.io/cadvisor/cadvisor:latest AS cadvisor
+EXPOSE 8080

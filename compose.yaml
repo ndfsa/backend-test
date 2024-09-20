@@ -11,15 +11,27 @@ services:
     restart: always
     ports:
       - 5432:5432
+  gateway:
+    build:
+      context: .
+      target: gateway
+    networks:
+      - bank_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 100M
+    ports:
+      - 8080:80
   auth:
     build:
       context: .
       target: authProd
     networks:
       - bank_net
-    restart: always
-    ports:
-      - 4001:80
+    restart: unless-stopped
     environment:
       - DB_URL=postgresql://back:root@db:5432/cardboard_bank
       - AUTH_PORT=80
@@ -34,9 +46,7 @@ services:
       target: apiProd
     networks:
       - bank_net
-    restart: always
-    ports:
-      - 4002:80
+    restart: unless-stopped
     environment:
       - DB_URL=postgresql://back:root@db:5432/cardboard_bank
       - AUTH_PORT=80
@@ -53,8 +63,6 @@ services:
       - bank_net
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-    ports:
-      - 9090:9090
     restart: unless-stopped
   cadvisor:
     build:
@@ -62,13 +70,15 @@ services:
       target: cadvisor
     networks:
       - bank_net
+    command:
+      - '--docker_only=true'
+      - '--disable_root_cgroup_stats=true'
     volumes:
-    - /:/rootfs:ro
+    - /:/rootfs:ro,rslave
     - /var/run:/var/run:rw
     - /sys:/sys:ro
-    - "/home/${USER:?error}/.local/share/docker:/var/lib/docker:ro"
-    - "/run/user/${UID:?error}/docker.sock:/var/run/docker.sock:ro"
-    - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    - "/home/${USER:?error}/.local/share/docker:/var/lib/docker:ro,rslave"
+    - "/run/user/${UID:-1000}/docker.sock:/var/run/docker.sock:ro"
   grafana:
     build:
       context: .

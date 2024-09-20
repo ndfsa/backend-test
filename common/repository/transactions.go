@@ -168,22 +168,18 @@ func (repo *TransactionsRepository) FindAllTransactions(
 	ctx context.Context,
 	cursor uuid.UUID,
 ) (iter.Seq2[model.Transaction, error], error) {
-	var rows *sql.Rows
-	var err error
+	query := "select id, state, time, currency, amount, source, destination from transactions"
+	params := make([]interface{}, 0, 1)
 
 	if (cursor != uuid.UUID{}) {
-		rows, err = repo.db.QueryContext(ctx,
-			`select id, state, time, currency, amount, source, destination from transactions
-            where id > $1
-            order by id
-            limit 10`, cursor)
-	} else {
-		rows, err = repo.db.QueryContext(ctx,
-			`select id, state, time, currency, amount, source, destination
-            from transactions
-            order by id
-            limit 10`)
+		query += " where id > $1"
+		params = append(params, cursor)
 	}
+
+	query += " order by id"
+	query += " limit 10"
+
+	rows, err := repo.db.QueryContext(ctx, query, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,24 +211,21 @@ func (repo *TransactionsRepository) FindServiceTransactions(
 	serviceId uuid.UUID,
 	cursor uuid.UUID,
 ) (iter.Seq2[model.Transaction, error], error) {
-	var rows *sql.Rows
-	var err error
+	query := "select id, state, time, currency, amount, source, destination from transactions"
+	params := make([]interface{}, 0, 2)
+
+	query += " where source = $1"
+	params = append(params, serviceId)
 
 	if (cursor != uuid.UUID{}) {
-		rows, err = repo.db.QueryContext(ctx,
-			`select id, state, time, currency, amount, source, destination
-            from transactions
-            where source = $1 and id > $2
-            order by id
-            limit 30`, serviceId, cursor)
-	} else {
-		rows, err = repo.db.QueryContext(ctx,
-			`select id, state, time, currency, amount, source, destination
-            from transactions
-            where source = $1
-            order by id
-            limit 30`, serviceId)
+		query += " and id > $2"
+		params = append(params, cursor)
 	}
+
+	query += " order by id"
+	query += " limit 10"
+
+	rows, err := repo.db.QueryContext(ctx, query, params...)
 	if err != nil {
 		return nil, err
 	}

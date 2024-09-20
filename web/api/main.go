@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -57,6 +58,9 @@ func main() {
 	http.Handle("POST /transactions", trshf.CreateTransaction())
 
 	http.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("GET /hello", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "hello world")
+	})
 
 	log.Println("---Starting API---")
 	if err := http.ListenAndServe(":"+os.Getenv("AUTH_PORT"), nil); !errors.Is(err, http.ErrServerClosed) {
