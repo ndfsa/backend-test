@@ -1,10 +1,15 @@
 package views
 
 import (
+	"context"
+	"log"
+
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/ndfsa/cardboard-bank/common/model"
+	"github.com/ndfsa/cardboard-bank/common/repository"
 )
 
 type AuthModel struct {
@@ -14,13 +19,18 @@ type AuthModel struct {
 	userTextInput textinput.Model
 	passTextInput textinput.Model
 	cursorMode    cursor.Mode
+	repo          repository.AuthRepository
+}
+
+type AuthSuccessMsg struct {
+	User model.User
 }
 
 var focusedStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("205"))
 var defaultStyle = lipgloss.NewStyle()
 
-func NewAuthModel() AuthModel {
+func NewAuthModel(repo repository.AuthRepository) AuthModel {
 	textInputUsername := textinput.New()
 	textInputUsername.Placeholder = "Username"
 	textInputUsername.CharLimit = 40
@@ -38,6 +48,7 @@ func NewAuthModel() AuthModel {
 	m := AuthModel{
 		userTextInput: textInputUsername,
 		passTextInput: textInputPassword,
+		repo:          repo,
 	}
 
 	return m
@@ -56,8 +67,10 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			m.focusIdx++
 
-			if m.focusIdx > 2 {
-				return m, tea.Quit
+			if m.focusIdx > 1 {
+				username := m.userTextInput.Value()
+				password := m.passTextInput.Value()
+				return m, m.login(username, password)
 			}
 
 			switch m.focusIdx {
@@ -84,11 +97,31 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.passTextInput.Blur()
 			}
 		}
+
+	case error:
+		log.Println(msg)
+		return m, tea.Quit
+	case model.User:
+		return m, func() tea.Msg {
+			return AuthSuccessMsg{User: msg}
+		}
 	}
 
 	cmd := m.updateInputs(msg)
 
 	return m, cmd
+}
+
+func (m AuthModel) login(username, password string) func() tea.Msg {
+	return func() tea.Msg {
+		ctx := context.Background()
+		user, err := m.repo.Authenticate(ctx, username, password)
+		if err != nil {
+			return err
+		}
+
+		return user
+	}
 }
 
 func (m *AuthModel) updateInputs(msg tea.Msg) tea.Cmd {
@@ -108,9 +141,9 @@ func (m AuthModel) View() string {
 		modelStyle.Render(lipgloss.JoinVertical(
 			lipgloss.Center,
 			lipgloss.NewStyle().
-				Width(43).
+				Width(42).
 				Render(m.userTextInput.View()),
 			lipgloss.NewStyle().
-				Width(43).
+				Width(42).
 				Render(m.passTextInput.View()))))
 }

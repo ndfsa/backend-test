@@ -25,20 +25,36 @@ RUN go mod download ;
 COPY . /src
 ENV GOCACHE=/root/.cache/go-build
 RUN --mount=type=cache,target="/root/.cache/go-build" \
+    go build -o /bin/tui ./tui && \
     go build -o /bin/auth ./web/auth && \
     go build -o /bin/api ./web/api ;
 
 # auth container
-FROM alpine AS authProd
+FROM alpine AS authprod
 COPY --from=build /bin/auth /bin/auth
 EXPOSE 80
 ENTRYPOINT /bin/auth ;
 
 # api container
-FROM alpine AS apiProd
+FROM alpine AS apiprod
 COPY --from=build /bin/api /bin/api
 EXPOSE 80
 ENTRYPOINT /bin/api ;
+
+# tui container
+FROM alpine AS tui
+RUN apk add openssh gettext moreutils ;
+RUN ssh-keygen -A ;
+COPY --from=build /bin/tui /bin/tui
+COPY ./tui/tui.conf /etc/ssh/ssh_config.d/tui.conf
+COPY ./tui/wrapper.sh /bin/tui_wrapper
+ARG DB_URL
+RUN envsubst < /bin/tui_wrapper | sponge /bin/tui_wrapper && \
+    adduser tui -s /bin/tui_wrapper -D && \
+    echo "tui:tui" | chpasswd && \
+    echo "" > /etc/motd ;
+EXPOSE 22
+ENTRYPOINT /usr/sbin/sshd -D -e ;
 
 # prometheus metrics
 FROM prom/prometheus AS prometheus

@@ -63,7 +63,7 @@ func main() {
 	})
 
 	log.Println("---Starting API---")
-	if err := http.ListenAndServe(":"+os.Getenv("AUTH_PORT"), nil); !errors.Is(err, http.ErrServerClosed) {
+	if err := http.ListenAndServe(":"+os.Getenv("PORT"), nil); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
 	close(jobQueue)

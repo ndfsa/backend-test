@@ -36,7 +36,7 @@ func main() {
 
 	log.Println("---Starting AUTH---")
 	if err := http.ListenAndServe(
-		":"+os.Getenv("AUTH_PORT"), nil); !errors.Is(err, http.ErrServerClosed) {
+		":"+os.Getenv("PORT"), nil); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
 }
