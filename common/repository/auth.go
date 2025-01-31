@@ -30,7 +30,10 @@ func (repo *AuthRepository) Authenticate(
 		&user.Username,
 		&user.Passhash,
 		&user.Fullname); err != nil {
-		return model.User{}, err
+
+        // for constant time validation
+        user.Validate(password)
+        return model.User{}, err
 	}
 
 	if err := user.Validate(password); err != nil {
