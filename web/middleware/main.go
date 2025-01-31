@@ -131,11 +131,9 @@ func (factory *MiddlewareFactory) Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		log.Printf("%s %s from %s %d[bytes] %f[s]",
+		log.Printf("%s %s %f[s]",
 			r.Method,
 			r.RequestURI,
-			r.RemoteAddr,
-			r.ContentLength,
 			time.Since(start).Seconds())
 	})
 }

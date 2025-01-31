@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -30,9 +29,6 @@ func main() {
 	http.Handle("GET /refresh", authf.RefreshToken())
 
 	http.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {})
-	http.HandleFunc("GET /hello", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "hello world")
-	})
 
 	log.Println("---Starting AUTH---")
 	if err := http.ListenAndServe(
