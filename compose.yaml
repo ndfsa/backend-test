@@ -55,55 +55,55 @@ services:
         limits:
           cpus: '1.00'
           memory: 100M
-  tui:
-    build:
-      context: .
-      target: tui
-      args:
-        - DB_URL=postgresql://back:root@db:5432/cardboard_bank
-    networks:
-      - bank_net
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 100M
-    ports:
-      - 8022:22
-  prometheus:
-    build:
-      context: .
-      target: prometheus
-    networks:
-      - bank_net
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    restart: unless-stopped
-  cadvisor:
-    build:
-      context: .
-      target: cadvisor
-    networks:
-      - bank_net
-    command:
-      - '--docker_only=true'
-      - '--disable_root_cgroup_stats=true'
-    volumes:
-    - /:/rootfs:ro,rslave
-    - /var/run:/var/run:rw
-    - /sys:/sys:ro
-    - "/home/${USER:?error}/.local/share/docker:/var/lib/docker:ro,rslave"
-    - "/run/user/${UID:-1000}/docker.sock:/var/run/docker.sock:ro"
-  grafana:
-    build:
-      context: .
-      target: grafana
-    networks:
-      - bank_net
-    ports:
-      - 3000:3000
-    restart: unless-stopped
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=grafana
+  # tui:
+  #   build:
+  #     context: .
+  #     target: tui
+  #     args:
+  #       - DB_URL=postgresql://back:root@db:5432/cardboard_bank
+  #   networks:
+  #     - bank_net
+  #   restart: unless-stopped
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.50'
+  #         memory: 100M
+  #   ports:
+  #     - 8022:22
+  # prometheus:
+  #   build:
+  #     context: .
+  #     target: prometheus
+  #   networks:
+  #     - bank_net
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #   restart: unless-stopped
+  # cadvisor:
+  #   build:
+  #     context: .
+  #     target: cadvisor
+  #   networks:
+  #     - bank_net
+  #   command:
+  #     - '--docker_only=true'
+  #     - '--disable_root_cgroup_stats=true'
+  #   volumes:
+  #   - /:/rootfs:ro,rslave
+  #   - /var/run:/var/run:rw
+  #   - /sys:/sys:ro
+  #   - "/home/${USER:?error}/.local/share/docker:/var/lib/docker:ro,rslave"
+  #   - "/run/user/${UID:-1000}/docker.sock:/var/run/docker.sock:ro"
+  # grafana:
+  #   build:
+  #     context: .
+  #     target: grafana
+  #   networks:
+  #     - bank_net
+  #   ports:
+  #     - 3000:3000
+  #   restart: unless-stopped
+  #   environment:
+  #     - GF_SECURITY_ADMIN_USER=admin
+  #     - GF_SECURITY_ADMIN_PASSWORD=grafana

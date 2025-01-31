@@ -18,9 +18,7 @@ func NewOwnershipRepository(db *sql.DB) OwnershipRepository {
 	return OwnershipRepository{db}
 }
 
-func (repo *OwnershipRepository) CheckUserOwnership(
-	userId, owner uuid.UUID,
-) error {
+func (repo *OwnershipRepository) CheckUserOwnership(userId, owner uuid.UUID) error {
 	if userId != owner {
 		return ErrOwnership
 	}
