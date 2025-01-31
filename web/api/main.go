@@ -34,7 +34,7 @@ func main() {
 	usrhf := NewUsersHandlerFactory(usrRepo, mdf)
 	trshf := NewTransactionsHandlerFactory(trsRepo, mdf, srvRepo)
 
-	NewWorkerPool(5, jobQueue)
+	NewWorkerPool(5, jobQueue, trsRepo)
 
 	http.Handle("GET /users/{id}", usrhf.ReadSingleUser())
 	http.Handle("GET /users", usrhf.ReadMultipleUsers())

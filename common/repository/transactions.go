@@ -28,9 +28,10 @@ func (repo *TransactionsRepository) CreateTransaction(
 	ctx context.Context,
 	transaction model.Transaction,
 ) error {
-	row := repo.db.QueryRowContext(ctx,
-		`insert into transactions(id, state, time, currency, amount, source, destination)
-        values($1, $2, $3, $4, $5, $6, $7) returning time`,
+	row := repo.db.QueryRowContext(ctx, `insert
+        into transactions(id, state, time, currency, amount, source, destination)
+        values($1, $2, $3, $4, $5, $6, $7)
+        returning time`,
 		transaction.Id,
 		transaction.State,
 		transaction.Time,
@@ -64,9 +65,10 @@ func (repo *TransactionsRepository) ExecuteTransaction(
 	}
 	defer tx.Rollback()
 
-	srcRow := tx.QueryRow(
-		`select id, type, state, currency, init_balance, balance from services
-        where id = $1 for no key update`,
+	srcRow := tx.QueryRow(`select id, type, state, permissions, currency, init_balance, balance
+        from services
+        where id = $1
+        for no key update`,
 		transaction.Source)
 
 	var srcService model.Service
@@ -74,6 +76,7 @@ func (repo *TransactionsRepository) ExecuteTransaction(
 		&srcService.Id,
 		&srcService.Type,
 		&srcService.State,
+        &srcService.Permissions,
 		&srcService.Currency,
 		&srcService.InitBalance,
 		&srcService.Balance,
@@ -89,16 +92,18 @@ func (repo *TransactionsRepository) ExecuteTransaction(
 		return err
 	}
 
-	dstRow := tx.QueryRow(
-		`select id, type, state, currency, init_balance, balance from services
-        where id = $1 for no key update`,
-		transaction.Source)
+	dstRow := tx.QueryRow(`select id, type, state, permissions, currency, init_balance, balance
+        from services
+        where id = $1
+        for no key update`,
+		transaction.Destination)
 
 	var dstService model.Service
 	if err := dstRow.Scan(
 		&dstService.Id,
 		&dstService.Type,
 		&dstService.State,
+		&dstService.Permissions,
 		&dstService.Currency,
 		&dstService.InitBalance,
 		&dstService.Balance,
@@ -115,24 +120,23 @@ func (repo *TransactionsRepository) ExecuteTransaction(
 	}
 
 	if _, err := tx.Exec(
-		`update services set balance = $1
-        where id = $2`,
+		`update services set balance = $1 where id = $2`,
 		srcService.Balance,
 		srcService.Id); err != nil {
 		return err
 	}
 
 	if _, err := tx.Exec(
-		`update services set balance = $1
-        where id = $2`,
+		`update services set balance = $1 where id = $2`,
 		dstService.Balance,
 		dstService.Id); err != nil {
 		return err
 	}
 
 	if _, err := tx.Exec(
-		`update transactions set state = $1
-        where id = $2`, model.TransactionStateSuccess, transaction.Id); err != nil {
+		`update transactions set state = $1 where id = $2`,
+		model.TransactionStateSuccess,
+		transaction.Id); err != nil {
 		return err
 	}
 
@@ -186,8 +190,9 @@ func (repo *TransactionsRepository) FindAllTransactions(
 
 	it := func(yield func(model.Transaction, error) bool) {
 		defer rows.Close()
+
+		var transaction model.Transaction
 		for rows.Next() {
-			var transaction model.Transaction
 			err := rows.Scan(
 				&transaction.Id,
 				&transaction.State,
